@@ -60,4 +60,30 @@ const submitApplicationController = async (req, res) => {
   }
 };
 
+const getApplicationByIdController = async (req, res) => {
+  try {
+    const applicationId = req.params.id;
+    const application = await applicationModel.findById(applicationId);
+    if (!application) {
+      return res.status(404).send({
+        success: false,
+        message: "application not found",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Get Application successfully",
+      application: application,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Get Application API",
+      error,
+    });
+  }
+};
+module.exports.getApplicationByIdController = getApplicationByIdController;
 module.exports.submitApplicationController = submitApplicationController;

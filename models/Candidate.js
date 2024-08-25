@@ -15,7 +15,7 @@ const candidateSchema = new mongoose.Schema({
     type: String,
   },
   gender: { type: String, default: "male" },
-  dateOfBirth: Date,
+  dateOfBirth: {type: Date, default: new Date()},
 
   createdAt: { type: Date, default: new Date() },
   lastModified: { type: Date, default: new Date() },

@@ -47,14 +47,7 @@ const updateCandidateController = async (req, res) => {
         message: "Please provide all required fields",
       });
     }
-    const file = req.file;
-    const fileUri = getDataUri(file);
-    const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
 
-    if (cloudResponse) {
-      candidate.resume = cloudResponse.secure_url;
-      candidate.resumeOriginalName = file.originalname;
-    }
     candidate.name = name || user.name;
     candidate.phoneNumber = phoneNumber;
     candidate.address = address;
@@ -69,7 +62,6 @@ const updateCandidateController = async (req, res) => {
     candidate.lastModified = Date.now();
     candidate.email = user.email;
 
-
     user.name = candidate.name;
     await candidate.save();
 
@@ -83,6 +75,43 @@ const updateCandidateController = async (req, res) => {
     res.status(500).send({
       success: false,
       message: "Error in Update Candidate API",
+      error,
+    });
+  }
+};
+
+const uploadCVController = async (req, res) => {
+  try {
+    const candidateId = req.params.id;
+    const candidate = await candidateModel.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).send({
+        success: false,
+        message: "candidate not found",
+      });
+    }
+    const file = req.file;
+    const fileUri = getDataUri(file);
+    const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
+
+    if (cloudResponse) {
+      candidate.resume = cloudResponse.secure_url;
+      candidate.resumeOriginalName = file.originalname;
+    }
+
+    candidate.lastModified = Date.now();
+    await candidate.save();
+
+    res.status(200).send({
+      success: true,
+      message: "Candidate upload cv successfully",
+      candidate: candidate,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Upload CV API",
       error,
     });
   }
@@ -150,7 +179,7 @@ const getCandidateByIdController = async (req, res) => {
       candidate = new candidateModel({
         _id: userId,
         name: user.name,
-        email: user.email
+        email: user.email,
       });
     }
     if (!candidate) {
@@ -176,6 +205,8 @@ const getCandidateByIdController = async (req, res) => {
     });
   }
 };
+
+module.exports.uploadCVController = uploadCVController;
 module.exports.getCandidateByIdController = getCandidateByIdController;
 module.exports.updateCandidateController = updateCandidateController;
 module.exports.updateAvatarController = updateAvatarController;

@@ -1,7 +1,10 @@
 const candidateModel = require("../models/Candidate");
 const jobModel = require("../models/Job");
 const applicationModel = require("../models/Application");
-
+const notificationModel = require("../models/notification");
+const nodemailer = require("nodemailer");
+const dotenv = require("dotenv");
+dotenv.config();
 const submitApplicationController = async (req, res) => {
   try {
     const { candidateId, jobId } = req.body;
@@ -36,6 +39,7 @@ const submitApplicationController = async (req, res) => {
     let application = new applicationModel({
       candidate: candidateId,
       job: jobId,
+      resume: candidate.resume,
     });
 
     await application.save();
@@ -85,5 +89,88 @@ const getApplicationByIdController = async (req, res) => {
     });
   }
 };
+
+const updateApplicationStatusController = async (req, res) => {
+  try {
+    const { applicationId, status } = req.body;
+    if (!applicationId || !status) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide application ID and status",
+      });
+    }
+
+    const application = await applicationModel
+      .findById(applicationId)
+      .populate("candidate")
+      .populate("job");
+    if (!application) {
+      return res.status(404).send({
+        success: false,
+        message: "Application not found",
+      });
+    }
+
+    application.status = status;
+    await application.save();
+
+    const candidateEmail = application.candidate.email;
+    const companyEmail = application.job.companyEmail;
+
+    const subject =
+      status === "accepted"
+        ? "Your application has been approved!"
+        : "Your application has been rejected";
+    const text =
+      status === "accepted"
+        ? `Congratulations! Your application for the position of ${application.job.title} has been approved.`
+        : `We regret to inform you that your application for the position of ${application.job.title} has been rejected.`;
+
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: companyEmail,
+      to: candidateEmail,
+      subject: subject,
+      text: text,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    const notificationMessage =
+      status === "accepted"
+        ? `Your application for the position of ${application.job.title} has been approved!`
+        : `Your application for the position of ${application.job.title} has been rejected.`;
+
+    const notification = new notificationModel({
+      candidate: application.candidate._id,
+      message: notificationMessage,
+      status: false,
+    });
+
+    await notification.save();
+
+    return res.status(200).send({
+      success: true,
+      message: `Application status updated to ${status} and notification sent to candidate.`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while updating the application status.",
+    });
+  }
+};
+
+
+
+module.exports.updateApplicationStatusController = updateApplicationStatusController;
 module.exports.getApplicationByIdController = getApplicationByIdController;
 module.exports.submitApplicationController = submitApplicationController;

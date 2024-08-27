@@ -9,6 +9,7 @@ const applicationSchema = new mongoose.Schema({
     enum: ["accepted", "pending", "rejected"],
     default: "pending",
   },
+  resume:String
 });
 
 module.exports = mongoose.model("Application", applicationSchema);

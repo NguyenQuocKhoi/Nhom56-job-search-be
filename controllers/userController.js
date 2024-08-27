@@ -6,7 +6,9 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const nodemailer = require("nodemailer");
-const mongoose = require("mongoose");
+const { OAuth2Client } = require("google-auth-library");
+const passport = require("passport");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 dotenv.config();
 
 const {
@@ -301,40 +303,49 @@ const searchByCriteriaController = async (req, res) => {
   try {
     const {
       address = "",
-      name = "",
-      skill = "",
-      email = "",
-      phoneNumber = "",
-      requirements = "",
-      title = "",
-      experienceLevel = "",
-      position = "",
-      salary = "",
-      type = "",
+      search = "", 
       page = 1,
     } = req.body;
 
-    const limit = 6;
+    const limit = 16;
     const skip = (page - 1) * limit;
 
     let query = {};
 
-    if (address) {
+    if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };
     }
 
-    if (name) query.name = { $regex: new RegExp(name, "i") };
-    if (skill) query.skill = { $elemMatch: { $regex: new RegExp(skill, "i") } };
-    if (requirements)
-      query.requirements = {
-        $elemMatch: { $regex: new RegExp(requirements, "i") },
-      };
-    if (title) query.title = { $regex: new RegExp(title, "i") };
-    if (experienceLevel)
-      query.experienceLevel = { $regex: new RegExp(experienceLevel, "i") };
-    if (position) query.position = { $regex: new RegExp(position, "i") };
-    if (salary) query.salary = salary;
-    if (type) query.type = type;
+    if (address && search) {
+      query.address = { $regex: new RegExp(address, "i") };
+      query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { experience: { $regex: new RegExp(search, "i") } },
+        { education: { $regex: new RegExp(search, "i") } },
+        { gender: { $regex: new RegExp(search, "i") } },
+        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        { title: { $regex: new RegExp(search, "i") } },
+        { experienceLevel: { $regex: new RegExp(search, "i") } },
+        { position: { $regex: new RegExp(search, "i") } },
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }])
+      ];
+    }
+
+    if (!address && search) {
+      query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { experience: { $regex: new RegExp(search, "i") } },
+        { education: { $regex: new RegExp(search, "i") } },
+        { gender: { $regex: new RegExp(search, "i") } },
+        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        { title: { $regex: new RegExp(search, "i") } },
+        { experienceLevel: { $regex: new RegExp(search, "i") } },
+        { position: { $regex: new RegExp(search, "i") } },
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }])
+      ];
+    }
 
     const sort = { status: -1 };
 
@@ -354,25 +365,15 @@ const searchByCriteriaController = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    // Count total documents for each collection
-    // const totalCompanyResults = await companyModel.countDocuments(query);
-    // const totalCandidateResults = await candidateModel.countDocuments(query);
-    // const totalJobResults = await jobModel.countDocuments(query);
-
     const [totalCompanyResults, totalCandidateResults, totalJobResults] =
       await Promise.all([
         companyModel.countDocuments(query),
         candidateModel.countDocuments(query),
         jobModel.countDocuments(query),
       ]);
-    // Combine results from all collections
-    // const results = [...companyResults, ...candidateResults, ...jobResults];
 
-    // Send response with results and pagination information
     res.status(200).json({
       success: true,
-      // data: results,
-
       data: {
         companies: companyResults,
         candidates: candidateResults,
@@ -398,6 +399,52 @@ const searchByCriteriaController = async (req, res) => {
   }
 };
 
+
+const googleLoginController = async (req, res) => {
+  try {
+    const { tokenId } = req.body;
+
+    if (!tokenId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Token ID is required" });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: tokenId,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      return res.status(401).json({ success: false, message: "Invalid Token" });
+    }
+
+    let user = await userModel.findOne({ googleId: payload.sub });
+
+    if (!user) {
+      user = new userModel({
+        googleId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        lastLogin: Date.now(),
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET, {
+      expiresIn: "3h",
+    });
+
+    res.json({ token, user });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+module.exports.googleLoginController = googleLoginController;
 module.exports.searchByCriteriaController = searchByCriteriaController;
 module.exports.checkEmailController = checkEmailController;
 module.exports.forgotPasswordController = forgotPasswordController;

@@ -41,7 +41,7 @@ const jobSchema = new mongoose.Schema({
     ref: "Company",
     required: true,
   },
-  status:{
+  status: {
     type: Boolean,
     default: false,
   },
@@ -51,8 +51,9 @@ const jobSchema = new mongoose.Schema({
       ref: "Application",
     },
   ],
+  numberOfCruiment: {
+    type: Number,
+  },
 });
-
-
 
 module.exports = mongoose.model("Job", jobSchema);

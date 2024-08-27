@@ -15,7 +15,7 @@ const candidateSchema = new mongoose.Schema({
     type: String,
   },
   gender: { type: String, default: "male" },
-  dateOfBirth: {type: Date, default: new Date()},
+  dateOfBirth: { type: Date, default: new Date() },
 
   createdAt: { type: Date, default: new Date() },
   lastModified: { type: Date, default: new Date() },
@@ -36,6 +36,10 @@ const candidateSchema = new mongoose.Schema({
     type: String,
   },
   avatar: String,
+  status: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 module.exports = mongoose.model("Candidate", candidateSchema);

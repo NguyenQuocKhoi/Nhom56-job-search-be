@@ -77,37 +77,6 @@ const createJobController = async (req, res) => {
   }
 };
 
-// const getAllJobsController = async (req, res) => {
-//   try {
-//     const { page = 1, limit = 16 } = req.query;
-
-//     const jobs = await jobModel
-//       .find()
-//       .populate("company")
-//       .sort({ status: -1 })
-//       .skip((page - 1) * limit)
-//       .limit(Number(limit));
-
-//     const totalJobs = await jobModel.countDocuments();
-
-//     res.status(200).send({
-//       success: true,
-//       message: "Jobs fetched successfully",
-//       jobs,
-//       totalJobs,
-//       totalPages: Math.ceil(totalJobs / limit),
-//       currentPage: Number(page),
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).send({
-//       success: false,
-//       message: "Error in get all jobs API",
-//       error,
-//     });
-//   }
-// };
-
 const getAllJobsController = async (req, res) => {
   try {
     const { page = 1, limit = 16 } = req.query;

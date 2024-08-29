@@ -310,7 +310,9 @@ const searchByCriteriaController = async (req, res) => {
     const limit = 16;
     const skip = (page - 1) * limit;
 
-    let query = {};
+    let query = {
+      status: true,
+    };
 
     if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };

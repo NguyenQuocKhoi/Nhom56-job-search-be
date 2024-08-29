@@ -1,5 +1,6 @@
 const candidateModel = require("../models/Candidate");
 const jobModel = require("../models/Job");
+const companyModel = require("../models/Company")
 const applicationModel = require("../models/Application");
 const notificationModel = require("../models/notification");
 const nodemailer = require("nodemailer");
@@ -104,6 +105,7 @@ const updateApplicationStatusController = async (req, res) => {
       .findById(applicationId)
       .populate("candidate")
       .populate("job");
+
     if (!application) {
       return res.status(404).send({
         success: false,
@@ -111,20 +113,30 @@ const updateApplicationStatusController = async (req, res) => {
       });
     }
 
+    const company = await companyModel.findById(application.job.company);
+    if (!company) {
+      return res.status(404).send({
+        success: false,
+        message: "Company not found",
+      });
+    }
+
     application.status = status;
     await application.save();
 
     const candidateEmail = application.candidate.email;
-    const companyEmail = application.job.companyEmail;
-
+    const companyName = company.name;
+    const workAddress = application.job.address; 
+    const companyEmail = company.email; 
     const subject =
       status === "accepted"
-        ? "Your application has been approved!"
-        : "Your application has been rejected";
+        ? `Invitation to Interview for the Position of ${application.job.title} at ${companyName}`
+        : `Application Status Update: ${application.job.title} at ${companyName}`;
+
     const text =
       status === "accepted"
-        ? `Congratulations! Your application for the position of ${application.job.title} has been approved.`
-        : `We regret to inform you that your application for the position of ${application.job.title} has been rejected.`;
+        ? `Dear ${application.candidate.name},\n\nCongratulations! We are pleased to inform you that your application for the position of ${application.job.title} at ${companyName} has been approved. We would like to invite you for an interview at our office located at ${workAddress}.\n\nPlease reply to this email to confirm your availability. We look forward to meeting you.\n\nThank you for your interest in joining our team.\n\nBest regards,\n${companyName}`
+        : `Dear ${application.candidate.name},\n\nThank you for applying for the position of ${application.job.title} at ${companyName}. After careful consideration, we regret to inform you that we will not be moving forward with your application at this time.\n\nWe appreciate the time and effort you invested in your application and encourage you to apply for future openings that match your skills and experience.\n\nThank you again for your interest in ${companyName}.\n\nBest regards,\n${companyName}`;
 
     const transporter = nodemailer.createTransport({
       service: "Gmail",
@@ -145,8 +157,8 @@ const updateApplicationStatusController = async (req, res) => {
 
     const notificationMessage =
       status === "accepted"
-        ? `Your application for the position of ${application.job.title} has been approved!`
-        : `Your application for the position of ${application.job.title} has been rejected.`;
+      ? `Your application for the position of ${application.job.title} at ${companyName} has been approved! You have been invited for an interview at ${workAddress}.`
+      : `Your application for the position of ${application.job.title} at ${companyName} has been rejected.`;
 
     const notification = new notificationModel({
       candidate: application.candidate._id,
@@ -169,8 +181,114 @@ const updateApplicationStatusController = async (req, res) => {
   }
 };
 
+const getApplyByCanididateIdController = async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
 
+    const applications = await applicationModel
+      .find({ candidate: candidateId })
+      .sort({ submittedAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
 
+    const totalApplications = await applicationModel.countDocuments({ candidate: candidateId });
+
+    if (!applications || applications.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No apply found for this candidate",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Applications fetched successfully",
+      applications,
+      totalApplications,
+      totalPages: Math.ceil(totalApplications / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get apply by candidate ID API",
+      error,
+    });
+  }
+};
+
+const getAllApplicationController = async (req, res) => {
+  try {
+    const { page = 1, limit = 16 } = req.query;
+  
+    const applications = await applicationModel
+      .find()
+      .sort({ submittedAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalApplications = await applicationModel.countDocuments();
+    res.status(200).send({
+      success: true,
+      message: "Applications fetched successfully",
+      applications,
+      totalApplications,
+      totalPages: Math.ceil(totalApplications / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get all applications API",
+      error,
+    });
+  }
+};
+
+const getApplyByJobIdController = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const applications = await applicationModel
+      .find({ job: jobId })
+      .sort({ submittedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalApplications = await applicationModel.countDocuments({ job: jobId });
+
+    if (!applications || applications.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No apply found for this job",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Applications fetched successfully",
+      applications,
+      totalApplications,
+      totalPages: Math.ceil(totalApplications / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get apply by job ID API",
+      error,
+    });
+  }
+};
+
+module.exports.getApplyByJobIdController = getApplyByJobIdController
+module.exports.getAllApplicationController = getAllApplicationController
+module.exports.getApplyByCanididateIdController = getApplyByCanididateIdController;
 module.exports.updateApplicationStatusController = updateApplicationStatusController;
 module.exports.getApplicationByIdController = getApplicationByIdController;
 module.exports.submitApplicationController = submitApplicationController;

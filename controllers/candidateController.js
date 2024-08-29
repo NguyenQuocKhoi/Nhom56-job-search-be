@@ -34,19 +34,21 @@ const updateCandidateController = async (req, res) => {
       moreInformation,
       name,
     } = req.body;
-    if (
-      !phoneNumber ||
-      !address ||
-      !skill ||
-      !experience ||
-      !education ||
-      !moreInformation
-    ) {
-      return res.status(400).send({
-        success: false,
-        message: "Please provide all required fields",
-      });
-    }
+    // if (
+    //   !name ||
+    //   !phoneNumber
+    //   // ||
+    //   // ! address ||
+    //   // !skill ||
+    //   // !experience ||
+    //   // !education ||
+    //   // !moreInformation
+    // ) {
+    //   return res.status(400).send({
+    //     success: false,
+    //     message: "Please provide all required fields",
+    //   });
+    // }
 
     candidate.name = name || user.name;
     candidate.phoneNumber = phoneNumber;

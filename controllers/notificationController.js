@@ -36,36 +36,6 @@ const getNotificationsByCandidateIdController = async (req, res) => {
   }
 };
 
-const updateNotificationStatus = async (req, res) => {
-  try {
-    const { notificationId } = req.params;
-
-    if (!notificationId) {
-      return res.status(400).send({
-        success: false,
-        message: "Please provide a candidate ID",
-      });
-    }
-
-    if (!notifications.length) {
-      return res.status(404).send({
-        success: false,
-        message: "No notifications found for this candidate",
-      });
-    }
-
-    return res.status(200).send({
-      success: true,
-      data: notifications,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      success: false,
-      message: "An error occurred while retrieving notifications",
-    });
-  }
-};
 
 const updateNotificationStatusController = async (req, res) => {
   try {

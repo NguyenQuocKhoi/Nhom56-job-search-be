@@ -16,4 +16,5 @@ router.get("/get-applications/:candidateId", verifyToken, getApplyByCanididateId
 router.get("/get-applications-by-job/:jobId", verifyToken, getApplyByJobIdController);
 
 router.get("/", adminMiddleware, getAllApplicationController);
+
 module.exports = router;

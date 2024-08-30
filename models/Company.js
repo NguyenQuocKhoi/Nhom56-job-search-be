@@ -22,7 +22,7 @@ const companySchema = new mongoose.Schema({
   website: String,
   status: {
     type: Boolean,
-    default: true,
+    default: false,
   },
 });
 

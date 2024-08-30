@@ -2,6 +2,7 @@ const userModel = require("../models/User");
 const companyModel = require("../models/Company");
 const { getDataUri } = require("../utils");
 const cloudinary = require("cloudinary");
+const notificationModel = require("../models/notification");
 
 const updateCompanyController = async (req, res) => {
   try {
@@ -31,11 +32,12 @@ const updateCompanyController = async (req, res) => {
         message: "Please provide all required fields",
       });
     }
-    company.name = name 
+    company.name = name;
     company.phoneNumber = phoneNumber;
     company.address = address;
     company.website = website;
     company.email = user.email;
+    company.status = false;
     company.lastModified = Date.now();
 
     // user.name = company.name;
@@ -176,6 +178,54 @@ const getAllCompaniesController = async (req, res) => {
   }
 };
 
+const updateCompanyStatusController = async (req, res) => {
+  try {
+    const { companyId, status } = req.body;
+
+    if (!companyId) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide company ID",
+      });
+    }
+
+    const company = await companyModel.findById(companyId);
+    if (!company) {
+      return res.status(404).send({
+        success: false,
+        message: "Company not found",
+      });
+    }
+
+    company.status = status;
+    await company.save();
+
+    const notificationMessage =
+      status === true
+        ? `The company ${company.name} has been successfully approved.`
+        : `The company ${company.name} has not been approved.`;
+
+    const notification = new notificationModel({
+      company: companyId,
+      message: notificationMessage,
+    });
+
+    await notification.save();
+    return res.status(200).send({
+      success: true,
+      message: `Company status updated to ${status}. ${notificationMessage}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while updating the company status.",
+    });
+  }
+};
+
+
+module.exports.updateCompanyStatusController = updateCompanyStatusController;
 module.exports.getAllCompaniesController = getAllCompaniesController;
 module.exports.updateAvatarController = updateAvatarController;
 module.exports.getCompanyByIdController = getCompanyByIdController;

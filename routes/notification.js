@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.put("/:notificationId", verifyToken, updateNotificationStatusController);
 
-router.get("/:candidateId",verifyToken ,getNotificationsByCandidateIdController)
+router.get("/:candidateId", verifyToken, getNotificationsByCandidateIdController)
 
 module.exports = router;

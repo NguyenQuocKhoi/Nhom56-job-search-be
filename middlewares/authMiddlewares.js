@@ -46,7 +46,7 @@ const candidateMiddleware = async (req, res, next) => {
     req.user = verified;
 
     const user = await userModel.findById(req.user._id);
-    if (!user || user.role !== "candidate") {
+    if (!user || user.role !== "candidate" && user.role !== "admin") {
       return res.status(403).send({
         success: false,
         message: "Access Denied. You do not have the necessary permissions.",
@@ -77,7 +77,7 @@ const companyMiddleware = async (req, res, next) => {
     req.user = verified;
 
     const user = await userModel.findById(req.user._id);
-    if (!user || user.role !== "company") {
+    if (!user || user.role !== "company" && user.role !== "admin") {
       return res.status(403).send({
         success: false,
         message: "Access Denied. You do not have the necessary permissions.",

@@ -2,6 +2,7 @@ const userModel = require("../models/User");
 const candidateModel = require("../models/Candidate");
 const companyModel = require("../models/Company");
 const jobModel = require("../models/Job");
+const categoryModel = require("../models/Category")
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");

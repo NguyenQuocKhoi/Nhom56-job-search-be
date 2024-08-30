@@ -23,6 +23,8 @@ const jobRouter = require("./routes/job");
 const applicationRouter = require("./routes/application");
 
 const notificationRouter = require("./routes/notification");
+
+const categoryRouter = require("./routes/category");
 dotenv.config();
 
 connectDB();
@@ -46,6 +48,7 @@ app.use("/api/v1/company", companyRouter);
 app.use("/api/v1/job", jobRouter);
 app.use("/api/v1/application", applicationRouter);
 app.use("/api/v1/notification", notificationRouter);
+app.use("/api/v1/category", categoryRouter);
 const PORT = process.env.PORT;
 
 app.listen(PORT, () => {

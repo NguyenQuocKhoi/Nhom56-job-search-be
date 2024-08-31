@@ -6,6 +6,7 @@ const notificationModel = require("../models/notification");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config();
+
 const submitApplicationController = async (req, res) => {
   try {
     const { candidateId, jobId } = req.body;

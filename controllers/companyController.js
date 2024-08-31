@@ -198,6 +198,7 @@ const updateCompanyStatusController = async (req, res) => {
     }
 
     company.status = status;
+    company.lastModified = Date.now();
     await company.save();
 
     const notificationMessage =

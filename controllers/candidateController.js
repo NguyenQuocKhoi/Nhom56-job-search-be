@@ -226,6 +226,7 @@ const updateCandidateStatusController = async (req, res) => {
     }
 
     candidate.status = status;
+    candidate.lastModified = Date.now();
     await candidate.save();
 
 
@@ -242,6 +243,8 @@ const updateCandidateStatusController = async (req, res) => {
     });
   }
 };
+
+
 
 module.exports.updateCandidateStatusController = updateCandidateStatusController
 module.exports.uploadCVController = uploadCVController;

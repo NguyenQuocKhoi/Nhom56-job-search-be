@@ -2,6 +2,7 @@ const companyModel = require("../models/Company");
 const jobModel = require("../models/Job");
 const applicationModel = require("../models/Application");
 const notificationModel = require("../models/notification")
+const saveJobModel = require("../models/SaveJobs"); 
 
 const createJobController = async (req, res) => {
   try {
@@ -226,6 +227,7 @@ const updateJobController = async (req, res) => {
     if(category) job.category = category;
 
     job.status = false;
+    job.lastModified = Date.now();
     await job.save();
 
     job = await jobModel.findById(job._id).populate("company");
@@ -259,11 +261,13 @@ const deleteJobController = async (req, res) => {
 
     await applicationModel.deleteMany({ job: jobId });
 
+    await saveJobModel.deleteMany({ job: jobId });
+
     await jobModel.findByIdAndDelete(jobId);
 
     res.status(200).send({
       success: true,
-      message: "Job and related applications deleted successfully",
+      message: "Job, related applications, and saved jobs deleted successfully",
     });
   } catch (error) {
     console.log(error);
@@ -274,6 +278,7 @@ const deleteJobController = async (req, res) => {
     });
   }
 };
+
 
 const updateJobStatusController = async (req, res) => {
   try {

@@ -90,9 +90,7 @@ const getCategoryByIdController = async (req, res) => {
 const updateCategoryController = async (req, res) => {
   try {
     const { categoryId } = req.params;
-    const {
-      name
-    } = req.body;
+    const { name } = req.body;
 
     let category = await categoryModel.findById(categoryId);
     if (!category) {
@@ -121,46 +119,104 @@ const updateCategoryController = async (req, res) => {
 };
 
 const getJobsByCategoryIdController = async (req, res) => {
-    try {
-      const { categoryId } = req.params;
-      const { page = 1, limit = 10 } = req.query;
-  
-      const jobs = await jobModel
-        .find({ category: categoryId })
-        .populate("company")
-        .sort({ status: -1 })
-        .skip((page - 1) * limit)
-        .limit(Number(limit));
-  
-      const totalJobs = await jobModel.countDocuments({ category: categoryId });
-  
-      if (!jobs || jobs.length === 0) {
-        return res.status(404).send({
-          success: false,
-          message: "No jobs found for this category",
-        });
-      }
-  
-      res.status(200).send({
-        success: true,
-        message: "Jobs fetched successfully",
-        jobs,
-        totalJobs,
-        totalPages: Math.ceil(totalJobs / limit),
-        currentPage: Number(page),
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(500).send({
+  try {
+    const { categoryId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const jobs = await jobModel
+      .find({ category: categoryId })
+      .populate("company")
+      .sort({ status: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalJobs = await jobModel.countDocuments({ category: categoryId });
+
+    if (!jobs || jobs.length === 0) {
+      return res.status(404).send({
         success: false,
-        message: "Error in get jobs by category ID API",
-        error,
+        message: "No jobs found for this category",
       });
     }
-  };
 
+    res.status(200).send({
+      success: true,
+      message: "Jobs fetched successfully",
+      jobs,
+      totalJobs,
+      totalPages: Math.ceil(totalJobs / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get jobs by category ID API",
+      error,
+    });
+  }
+};
+
+const getJobsByCategoryNameController = async (req, res) => {
+  try {
+    const { categoryName } = req.body;
+    const { page = 1, limit = 10 } = req.query;
+
+   
+    if (!categoryName) {
+      return res.status(400).send({
+        success: false,
+        message: "Category name is required",
+      });
+    }
+
+   
+    const category = await categoryModel.findOne({ name: categoryName });
+
+    if (!category) {
+      return res.status(404).send({
+        success: false,
+        message: "Category not found",
+      });
+    }
+    const jobs = await jobModel
+      .find({ category: category._id })
+      .populate("company")
+      .sort({ status: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalJobs = await jobModel.countDocuments({ category: category._id });
+
+    if (!jobs || jobs.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No jobs found for this category",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Jobs fetched successfully",
+      jobs,
+      totalJobs,
+      totalPages: Math.ceil(totalJobs / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get jobs by category name API",
+      error,
+    });
+  }
+};
+
+
+module.exports.getJobsByCategoryNameController = getJobsByCategoryNameController
 module.exports.getJobsByCategoryIdController = getJobsByCategoryIdController;
-module.exports.updateCategoryController = updateCategoryController
+module.exports.updateCategoryController = updateCategoryController;
 module.exports.getCategoryByIdController = getCategoryByIdController;
 module.exports.getAllCategoriesController = getAllCategoriesController;
 module.exports.createCategoryController = createCategoryController;

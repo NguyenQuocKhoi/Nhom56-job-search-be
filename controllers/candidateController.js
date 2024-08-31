@@ -166,8 +166,6 @@ const updateAvatarController = async (req, res) => {
 
 const getCandidateByIdController = async (req, res) => {
   try {
-    // const candidateId = req.params.id;
-    // const candidate = await candidateModel.findById(candidateId);
     const userId = req.params.id;
     const user = await userModel.findById(userId).select("name email");
     if (!user) {
@@ -208,6 +206,44 @@ const getCandidateByIdController = async (req, res) => {
   }
 };
 
+const updateCandidateStatusController = async (req, res) => {
+  try {
+    const { candidateId, status } = req.body;
+
+    if (!candidateId) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide candidate ID",
+      });
+    }
+
+    const candidate = await candidateModel.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).send({
+        success: false,
+        message: "candidate not found",
+      });
+    }
+
+    candidate.status = status;
+    await candidate.save();
+
+
+
+    return res.status(200).send({
+      success: true,
+      message: `Candidate status updated to ${status}`,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while updating the candidate status.",
+    });
+  }
+};
+
+module.exports.updateCandidateStatusController = updateCandidateStatusController
 module.exports.uploadCVController = uploadCVController;
 module.exports.getCandidateByIdController = getCandidateByIdController;
 module.exports.updateCandidateController = updateCandidateController;

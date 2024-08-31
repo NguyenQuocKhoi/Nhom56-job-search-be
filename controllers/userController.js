@@ -2,7 +2,7 @@ const userModel = require("../models/User");
 const candidateModel = require("../models/Candidate");
 const companyModel = require("../models/Company");
 const jobModel = require("../models/Job");
-const categoryModel = require("../models/Category")
+const categoryModel = require("../models/Category");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
@@ -302,11 +302,7 @@ const checkEmailController = async (req, res) => {
 
 const searchByCriteriaController = async (req, res) => {
   try {
-    const {
-      address = "",
-      search = "", 
-      page = 1,
-    } = req.body;
+    const { address = "", search = "", page = 1 } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
@@ -322,49 +318,79 @@ const searchByCriteriaController = async (req, res) => {
     if (address && search) {
       query.address = { $regex: new RegExp(address, "i") };
       query.$or = [
-        { name: { $regex: new RegExp(search, "i") } },
-        { experience: { $regex: new RegExp(search, "i") } },
-        { education: { $regex: new RegExp(search, "i") } },
-        { gender: { $regex: new RegExp(search, "i") } },
-        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         { title: { $regex: new RegExp(search, "i") } },
+        { description: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }])
+        { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
+        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
     }
 
     if (!address && search) {
       query.$or = [
-        { name: { $regex: new RegExp(search, "i") } },
-        { experience: { $regex: new RegExp(search, "i") } },
-        { education: { $regex: new RegExp(search, "i") } },
-        { gender: { $regex: new RegExp(search, "i") } },
-        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         { title: { $regex: new RegExp(search, "i") } },
+        { description: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }])
+        { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
+        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
     }
 
-    const sort = { status: -1 };
+    const jobResults = await jobModel.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "categoryDetails",
+        },
+      },
+      { $unwind: "$categoryDetails" },
+      {
+        $match: {
+          $or: [
+            { "categoryDetails.name": { $regex: new RegExp(search, "i") } },
+          ],
+        },
+      },
+      { $skip: skip },
+      { $limit: limit },
+      { $sort: { status: -1 } },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          salary: 1,
+          experienceLevel: 1,
+          position: 1,
+          address: 1,
+          type: 1,
+          expiredAt: 1,
+          createdAt: 1,
+          lastModified: 1,
+          company: 1,
+          created_by: 1,
+          applications: 1,
+          numberOfCruiment: 1,
+          category: "$categoryDetails.name",
+        },
+      },
+    ]);
 
     const companyResults = await companyModel
       .find(query)
-      .sort(sort)
+      .sort({ status: -1 })
       .skip(skip)
       .limit(limit);
+
     const candidateResults = await candidateModel
       .find(query)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
-    const jobResults = await jobModel
-      .find(query)
-      .sort(sort)
+      .sort({ status: -1 })
       .skip(skip)
       .limit(limit);
 

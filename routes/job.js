@@ -3,7 +3,7 @@ const multer = require("multer");
 const upload = multer();
 const router = express.Router();
 const {verifyToken, companyMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController } = require("../controllers/jobControllers");
+const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController, getJobsFalseByCompanyIdController, getJobsNotStatusByCompanyIdController } = require("../controllers/jobControllers");
 
 
 router.post("/create", companyMiddleware, createJobController )
@@ -15,6 +15,10 @@ router.get('/get-all',getAllJobsController)
 router.get("/get-job/:companyId", getJobsByCompanyIdController)
 
 router.get("/get-jobs/:companyId", getJobsTrueByCompanyIdController);
+
+router.get("/get-jobs-rejected/:companyId", getJobsFalseByCompanyIdController);
+
+router.get("/get-jobs-pending/:companyId", getJobsNotStatusByCompanyIdController);
 
 router.get("/:jobId", getJobByIdController);
 

@@ -236,6 +236,84 @@ const getJobsTrueByCompanyIdController = async (req, res) => {
   }
 };
 
+const getJobsFalseByCompanyIdController = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { page = 1, limit = 6 } = req.query;
+
+    const jobs = await jobModel
+      .find({ company: companyId, status: false })
+      .populate("company")
+      .sort({ createdAt: -1 }) 
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalJobs = await jobModel.countDocuments({ company: companyId, status: false });
+
+    if (!jobs || jobs.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No jobs found for this company",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Jobs fetched successfully",
+      jobs,
+      totalJobs,
+      totalPages: Math.ceil(totalJobs / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get jobs by company ID API",
+      error,
+    });
+  }
+};
+
+const getJobsNotStatusByCompanyIdController = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { page = 1, limit = 6 } = req.query;
+
+    const jobs = await jobModel
+      .find({ company: companyId, status: undefined })
+      .populate("company")
+      .sort({ createdAt: -1 }) 
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalJobs = await jobModel.countDocuments({ company: companyId, status: undefined });
+
+    if (!jobs || jobs.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No jobs found for this company",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Jobs fetched successfully",
+      jobs,
+      totalJobs,
+      totalPages: Math.ceil(totalJobs / limit),
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get jobs by company ID API",
+      error,
+    });
+  }
+};
+
 
 const getJobByIdController = async (req, res) => {
   try {
@@ -406,6 +484,8 @@ const updateJobStatusController = async (req, res) => {
 };
 
 
+module.exports.getJobsFalseByCompanyIdController = getJobsFalseByCompanyIdController;
+module.exports.getJobsNotStatusByCompanyIdController = getJobsNotStatusByCompanyIdController
 module.exports.getAllJobsStatusTrueController = getAllJobsStatusTrueController
 module.exports.updateJobStatusController = updateJobStatusController;
 module.exports.deleteJobController = deleteJobController;

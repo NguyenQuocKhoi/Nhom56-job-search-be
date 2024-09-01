@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const {verifyToken, candidateMiddleware, companyMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { submitApplicationController, getApplicationByIdController, updateApplicationStatusController, getApplyByCanididateIdController, getAllApplicationController, getApplyByJobIdController } = require("../controllers/applicationController");
+const { submitApplicationController, getApplicationByIdController, updateApplicationStatusController, getApplyByCanididateIdController, getAllApplicationController, getApplyByJobIdController, getApplicationByCandidateAndJobController } = require("../controllers/applicationController");
 
 
 router.post("/create", verifyToken, submitApplicationController);
@@ -16,5 +16,7 @@ router.get("/get-applications/:candidateId", verifyToken, getApplyByCanididateId
 router.get("/get-applications-by-job/:jobId", verifyToken, getApplyByJobIdController);
 
 router.get("/", adminMiddleware, getAllApplicationController);
+
+router.get("/get-apply", verifyToken, getApplicationByCandidateAndJobController);
 
 module.exports = router;

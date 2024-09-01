@@ -37,7 +37,8 @@ const updateCompanyController = async (req, res) => {
     company.address = address;
     company.website = website;
     company.email = user.email;
-    company.status = false;
+    company.status = undefined;
+    // company.status = false;
     company.lastModified = Date.now();
 
     // user.name = company.name;
@@ -178,6 +179,39 @@ const getAllCompaniesController = async (req, res) => {
   }
 };
 
+const getAllCompaniesTrueController = async (req, res) => {
+  try {
+    const { page = 1, limit = 4 } = req.query;
+
+    const companies = await companyModel
+      .find({ status: true })
+      .sort({ createdAt: -1 }) 
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalCompanies = await companyModel.countDocuments({ status: true });
+
+    const totalPages = Math.ceil(totalCompanies / limit);
+
+    res.status(200).send({
+      success: true,
+      message: "Companies fetched successfully",
+      companies,
+      totalCompanies,
+      totalPages,
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get all companies API",
+      error,
+    });
+  }
+};
+
+
 const updateCompanyStatusController = async (req, res) => {
   try {
     const { companyId, status } = req.body;
@@ -228,6 +262,7 @@ const updateCompanyStatusController = async (req, res) => {
 
 module.exports.updateCompanyStatusController = updateCompanyStatusController;
 module.exports.getAllCompaniesController = getAllCompaniesController;
+module.exports.getAllCompaniesTrueController = getAllCompaniesTrueController;
 module.exports.updateAvatarController = updateAvatarController;
 module.exports.getCompanyByIdController = getCompanyByIdController;
 module.exports.updateCompanyController = updateCompanyController;

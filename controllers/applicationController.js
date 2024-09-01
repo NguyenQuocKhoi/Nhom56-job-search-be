@@ -287,6 +287,38 @@ const getApplyByJobIdController = async (req, res) => {
   }
 };
 
+const getApplicationByCandidateAndJobController = async (req, res) => {
+  try {
+    const { candidateId, jobId } = req.body;
+    const application = await applicationModel.findOne({
+      candidate: candidateId,
+      job: jobId,
+    }).populate("candidate job", "-__v");
+
+    if (!application) {
+      return res.status(404).send({
+        success: false,
+        message: "Application not found",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Application retrieved successfully",
+      application: application,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Get Application API",
+      error,
+    });
+  }
+};
+
+
+module.exports.getApplicationByCandidateAndJobController = getApplicationByCandidateAndJobController;
 module.exports.getApplyByJobIdController = getApplyByJobIdController
 module.exports.getAllApplicationController = getAllApplicationController
 module.exports.getApplyByCanididateIdController = getApplyByCanididateIdController;

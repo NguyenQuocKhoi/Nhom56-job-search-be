@@ -262,12 +262,12 @@ const getApplyByJobIdController = async (req, res) => {
 
     const totalApplications = await applicationModel.countDocuments({ job: jobId });
 
-    if (!applications || applications.length === 0) {
-      return res.status(404).send({
-        success: false,
-        message: "No apply found for this job",
-      });
-    }
+    // if (!applications || applications.length === 0) {
+    //   return res.status(404).send({
+    //     success: false,
+    //     message: "No apply found for this job",
+    //   });
+    // }
 
     res.status(200).send({
       success: true,

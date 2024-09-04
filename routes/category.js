@@ -12,7 +12,7 @@ router.post("/create", adminMiddleware, createCategoryController);
 
 router.get("/get-all", verifyToken, getAllCategoriesController);
 
-router.get("/:categoryId", verifyToken, getCategoryByIdController);
+router.get("/:categoryId", getCategoryByIdController);
 
 router.put("/update/:categoryId", adminMiddleware, updateCategoryController);
 

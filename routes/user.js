@@ -10,6 +10,7 @@ const {
   updateUserController,
   searchByCriteriaController,
   googleLoginController,
+  updateUserStatusController,
 } = require("../controllers/userController");
 const {
   verifyToken,
@@ -32,5 +33,7 @@ router.post("/check-email", checkEmailController)
 router.put("/update/:id", verifyToken, updateUserController);
 
 router.post("/login/google", googleLoginController);
+
+router.put("/update-status/:id", adminMiddleware, updateUserStatusController);
 
 module.exports = router;

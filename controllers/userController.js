@@ -225,9 +225,15 @@ const forgotPasswordController = async (req, res) => {
 
   try {
     const user = await userModel.findOne({ email });
+    
     if (!user) {
       return res.status(404).send("User not found");
     }
+
+    if (!user.isActive) {
+      return res.status(403).send("Account is inactive. Cannot reset password.");
+    }
+
     const newPassword = generateRandomPassword();
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
@@ -300,9 +306,148 @@ const checkEmailController = async (req, res) => {
   }
 };
 
+// const searchByCriteriaController = async (req, res) => {
+//   try {
+//     const { address = "", search = "", page = 1 } = req.body;
+
+//     const limit = 16;
+//     const skip = (page - 1) * limit;
+
+//     let query = {
+//       status: true,
+//     };
+
+//     if (address && !search) {
+//       query.address = { $regex: new RegExp(address, "i") };
+//     }
+
+//     if (address && search) {
+//       query.address = { $regex: new RegExp(address, "i") };
+//       query.$or = [
+//         { title: { $regex: new RegExp(search, "i") } },
+//         { name: { $regex: new RegExp(search, "i") } },
+//         { description: { $regex: new RegExp(search, "i") } },
+//         { experienceLevel: { $regex: new RegExp(search, "i") } },
+//         { position: { $regex: new RegExp(search, "i") } },
+//         { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
+//         { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+//         { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+//         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
+//       ];
+//     }
+
+//     if (!address && search) {
+//       query.$or = [
+//         { title: { $regex: new RegExp(search, "i") } },
+//         { name: { $regex: new RegExp(search, "i") } },
+//         { description: { $regex: new RegExp(search, "i") } },
+//         { experienceLevel: { $regex: new RegExp(search, "i") } },
+//         { position: { $regex: new RegExp(search, "i") } },
+//         { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
+//         { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+//         { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+//         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
+//       ];
+//     }
+
+//     const jobResults = await jobModel.aggregate([
+//       { $match: query },
+//       {
+//         $lookup: {
+//           from: "categories",
+//           localField: "category",
+//           foreignField: "_id",
+//           as: "categoryDetails",
+//         },
+//       },
+//       { $unwind: "$categoryDetails" },
+//       {
+//         $match: {
+//           $or: [
+//             { "categoryDetails.name": { $regex: new RegExp(search, "i") } },
+//           ],
+//         },
+//       },
+//       { $skip: skip },
+//       { $limit: limit },
+//       { $sort: { status: -1 } },
+//       {
+//         $project: {
+//           title: 1,
+//           description: 1,
+//           salary: 1,
+//           experienceLevel: 1,
+//           position: 1,
+//           address: 1,
+//           type: 1,
+//           expiredAt: 1,
+//           createdAt: 1,
+//           lastModified: 1,
+//           company: 1,
+//           created_by: 1,
+//           applications: 1,
+//           numberOfCruiment: 1,
+//           category: "$categoryDetails.name",
+//         },
+//       },
+//     ]);
+
+//     const companyResults = await companyModel
+//       .find(query)
+//       .sort({ status: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     const candidateResults = await candidateModel
+//       .find(query)
+//       .sort({ status: -1 })
+//       .skip(skip)
+//       .limit(limit);
+
+//     const [totalCompanyResults, totalCandidateResults, totalJobResults] =
+//       await Promise.all([
+//         companyModel.countDocuments(query),
+//         candidateModel.countDocuments(query),
+//         jobModel.countDocuments(query),
+//       ]);
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         companies: companyResults,
+//         candidates: candidateResults,
+//         jobs: jobResults,
+//       },
+//       pagination: {
+//         page,
+//         limit,
+//         totalResults:
+//           totalCompanyResults + totalCandidateResults + totalJobResults,
+//         totalPages: Math.ceil(
+//           (totalCompanyResults + totalCandidateResults + totalJobResults) /
+//             limit
+//         ),
+//       },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server Error",
+//     });
+//   }
+// };
+
+
+
 const searchByCriteriaController = async (req, res) => {
   try {
-    const { address = "", search = "", page = 1 } = req.body;
+    const {
+      address = "",
+      search = "",
+      categoryName = "",  
+      page = 1,
+    } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
@@ -311,6 +456,14 @@ const searchByCriteriaController = async (req, res) => {
       status: true,
     };
 
+    let categoryIds = [];
+    if (categoryName) {
+      const categories = await categoryModel.find({
+        name: { $regex: new RegExp(categoryName, "i") },
+      });
+      categoryIds = categories.map((category) => category._id);
+    }
+
     if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };
     }
@@ -318,79 +471,52 @@ const searchByCriteriaController = async (req, res) => {
     if (address && search) {
       query.address = { $regex: new RegExp(address, "i") };
       query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { experience: { $regex: new RegExp(search, "i") } },
+        { education: { $regex: new RegExp(search, "i") } },
+        { gender: { $regex: new RegExp(search, "i") } },
+        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         { title: { $regex: new RegExp(search, "i") } },
-        { description: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
-        { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
-        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
     }
-
     if (!address && search) {
       query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { experience: { $regex: new RegExp(search, "i") } },
+        { education: { $regex: new RegExp(search, "i") } },
+        { gender: { $regex: new RegExp(search, "i") } },
+        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
+        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         { title: { $regex: new RegExp(search, "i") } },
-        { description: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
-        { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
-        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
     }
 
-    const jobResults = await jobModel.aggregate([
-      { $match: query },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "categoryDetails",
-        },
-      },
-      { $unwind: "$categoryDetails" },
-      {
-        $match: {
-          $or: [
-            { "categoryDetails.name": { $regex: new RegExp(search, "i") } },
-          ],
-        },
-      },
-      { $skip: skip },
-      { $limit: limit },
-      { $sort: { status: -1 } },
-      {
-        $project: {
-          title: 1,
-          description: 1,
-          salary: 1,
-          experienceLevel: 1,
-          position: 1,
-          address: 1,
-          type: 1,
-          expiredAt: 1,
-          createdAt: 1,
-          lastModified: 1,
-          company: 1,
-          created_by: 1,
-          applications: 1,
-          numberOfCruiment: 1,
-          category: "$categoryDetails.name",
-        },
-      },
-    ]);
+    if (categoryIds.length > 0) {
+      query.category = { $in: categoryIds };
+    }
+
+    const sort = { status: -1 };
 
     const companyResults = await companyModel
       .find(query)
-      .sort({ status: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit);
-
     const candidateResults = await candidateModel
       .find(query)
-      .sort({ status: -1 })
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+    const jobResults = await jobModel
+      .find(query)
+      .sort(sort)
       .skip(skip)
       .limit(limit);
 
@@ -473,6 +599,48 @@ const googleLoginController = async (req, res) => {
   }
 };
 
+const updateUserStatusController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide a valid isActive field (true or false)",
+      });
+    }
+    const user = await userModel.findById(id).select("-password");
+
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        message: "User not found",
+      });
+    }
+    user.isActive = isActive;
+    user.lastModified = Date.now();
+    await user.save();
+
+    const userWithoutPassword = await userModel
+      .findById(user._id)
+      .select("-password");
+
+    res.status(200).send({
+      success: true,
+      user: userWithoutPassword,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Update User Status API",
+      error,
+    });
+  }
+};
+
+module.exports.updateUserStatusController = updateUserStatusController;
 module.exports.googleLoginController = googleLoginController;
 module.exports.searchByCriteriaController = searchByCriteriaController;
 module.exports.checkEmailController = checkEmailController;

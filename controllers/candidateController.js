@@ -244,8 +244,102 @@ const updateCandidateStatusController = async (req, res) => {
   }
 };
 
+const getAllCandidatesController = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
 
+    const candidates = await candidateModel
+      .find()
+      .sort({ createdAt: 1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
 
+    const totalCandidates = await candidateModel.countDocuments();
+
+    const totalPages = Math.ceil(totalCandidates / limit);
+
+    res.status(200).send({
+      success: true,
+      message: "Candidates fetched successfully",
+      candidates,
+      totalCandidates,
+      totalPages,
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get all candidates API",
+      error,
+    });
+  } 
+};
+
+const searchCandidatesController = async (req, res) => {
+  try {
+    const {
+      address = "",
+      search = "",
+      page = 1,
+    } = req.body;
+
+    const limit = 16;
+    const skip = (page - 1) * limit;
+
+    let query = {
+      // status: true,
+    };
+
+    if (address) {
+      query.address = { $regex: new RegExp(address, "i") };
+    }
+
+    if (search) {
+      const searchQuery = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { email: { $regex: new RegExp(search, "i") } },
+        { phoneNumber: { $regex: new RegExp(search, "i") } },
+        { skill: { $regex: new RegExp(search, "i") } },
+        { gender: { $regex: new RegExp(search, "i") } },
+        { education: { $regex: new RegExp(search, "i") } },
+        { experience: { $regex: new RegExp(search, "i") } },
+      ];
+
+      query.$or = searchQuery;
+    }
+
+    const sort = { createdAt: 1 };
+
+    const candidateResults = await candidateModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const totalCandidateResults = await candidateModel.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      candidates: candidateResults,
+      pagination: {
+        page,
+        limit,
+        totalResults: totalCandidateResults,
+        totalPages: Math.ceil(totalCandidateResults / limit),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+module.exports.searchCandidatesController = searchCandidatesController;
+module.exports.getAllCandidatesController = getAllCandidatesController
 module.exports.updateCandidateStatusController = updateCandidateStatusController
 module.exports.uploadCVController = uploadCVController;
 module.exports.getCandidateByIdController = getCandidateByIdController;

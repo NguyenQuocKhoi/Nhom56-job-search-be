@@ -149,7 +149,7 @@ const getCompanyByIdController = async (req, res) => {
 
 const getAllCompaniesController = async (req, res) => {
   try {
-    const { page = 1, limit = 4 } = req.query;
+    const { page = 1, limit = 10 } = req.query;
 
     const companies = await companyModel
       .find()
@@ -181,7 +181,7 @@ const getAllCompaniesController = async (req, res) => {
 
 const getAllCompaniesTrueController = async (req, res) => {
   try {
-    const { page = 1, limit = 4 } = req.query;
+    const { page = 1, limit = 10 } = req.query;
 
     const companies = await companyModel
       .find({ status: true })
@@ -211,6 +211,69 @@ const getAllCompaniesTrueController = async (req, res) => {
   }
 };
 
+const getAllCompaniesRejectedController = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    const companies = await companyModel
+      .find({ status: false })
+      .sort({ createdAt: -1 }) 
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalCompanies = await companyModel.countDocuments({ status: false });
+
+    const totalPages = Math.ceil(totalCompanies / limit);
+
+    res.status(200).send({
+      success: true,
+      message: "Companies fetched successfully",
+      companies,
+      totalCompanies,
+      totalPages,
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get all companies API",
+      error,
+    });
+  }
+};
+
+const getAllCompaniesPendingController = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    const companies = await companyModel
+      .find({ status: undefined })
+      .sort({ createdAt: 1 }) 
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const totalCompanies = await companyModel.countDocuments({ status: undefined });
+
+    const totalPages = Math.ceil(totalCompanies / limit);
+
+    res.status(200).send({
+      success: true,
+      message: "Companies fetched successfully",
+      companies,
+      totalCompanies,
+      totalPages,
+      currentPage: Number(page),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in get all companies API",
+      error,
+    });
+  }
+};
 
 const updateCompanyStatusController = async (req, res) => {
   try {
@@ -259,7 +322,67 @@ const updateCompanyStatusController = async (req, res) => {
   }
 };
 
+const searchCompaniesController = async (req, res) => {
+  try {
+    const {
+      address = "",
+      search = "",
+      page = 1,
+    } = req.body;
 
+    const limit = 16;
+    const skip = (page - 1) * limit;
+
+    let query = {
+      // status: true,
+    };
+
+    if (address) {
+      query.address = { $regex: new RegExp(address, "i") };
+    }
+
+    if (search) {
+      const searchQuery = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { email: { $regex: new RegExp(search, "i") } },
+        { phoneNumber: { $regex: new RegExp(search, "i") } },
+      ];
+
+      query.$or = searchQuery;
+    }
+
+    const sort = { createdAt: 1 };
+
+    const companyResults = await companyModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const totalCompanyResults = await companyModel.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      companies: companyResults,
+      pagination: {
+        page,
+        limit,
+        totalResults: totalCompanyResults,
+        totalPages: Math.ceil(totalCompanyResults / limit),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+module.exports.searchCompaniesController = searchCompaniesController;
+module.exports.getAllCompaniesPendingController = getAllCompaniesPendingController;
+module.exports.getAllCompaniesRejectedController = getAllCompaniesRejectedController
 module.exports.updateCompanyStatusController = updateCompanyStatusController;
 module.exports.getAllCompaniesController = getAllCompaniesController;
 module.exports.getAllCompaniesTrueController = getAllCompaniesTrueController;

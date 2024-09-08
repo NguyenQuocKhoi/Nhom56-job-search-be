@@ -1,6 +1,6 @@
 const express = require('express');
 const { adminMiddleware, verifyToken } = require('../middlewares/authMiddlewares');
-const { createCategoryController, getAllCategoriesController, getCategoryByIdController, updateCategoryController, getJobsByCategoryIdController, getJobsByCategoryNameController } = require('../controllers/categoryController');
+const { createCategoryController, getAllCategoriesController, getCategoryByIdController, updateCategoryController, getJobsByCategoryIdController, getJobsByCategoryNameController, checkCategoryController } = require('../controllers/categoryController');
 
 const router = express.Router();
 
@@ -15,5 +15,7 @@ router.get("/get-all", verifyToken, getAllCategoriesController);
 router.get("/:categoryId", getCategoryByIdController);
 
 router.put("/update/:categoryId", adminMiddleware, updateCategoryController);
+
+router.post("/check-category", adminMiddleware, checkCategoryController)
 
 module.exports = router;

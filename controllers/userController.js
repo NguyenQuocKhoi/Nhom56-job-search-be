@@ -67,13 +67,13 @@ const registerController = async (req, res) => {
 
       const savedUser = await user.save();
       const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "3h",
       });
 
       const userResponse = savedUser.toObject();
       delete userResponse.password;
 
-      res.header("auth-token", token).json({ user: userResponse });
+      res.header("auth-token", token).json({token: token, user: userResponse });
     } catch (err) {
       res.status(400).send(err);
     }
@@ -463,6 +463,12 @@ const searchByCriteriaController = async (req, res) => {
       });
       categoryIds = categories.map((category) => category._id);
     }
+    if (search) {
+      const categories = await categoryModel.find({
+        name: { $regex: new RegExp(search, "i") },
+      });
+      categoryIds = categories.map((category) => category._id);
+    }
 
     if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };
@@ -480,6 +486,7 @@ const searchByCriteriaController = async (req, res) => {
         { title: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
+        ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
     }
@@ -494,6 +501,7 @@ const searchByCriteriaController = async (req, res) => {
         { title: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
+        ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
     }

@@ -5,6 +5,8 @@ const router = express.Router();
 const {verifyToken, companyMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
 const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController, getJobsFalseByCompanyIdController, getJobsNotStatusByCompanyIdController, getAllJobsReJectedController, getAllJobsPendingController, searchJobsController } = require("../controllers/jobControllers");
 
+router.post("/search", searchJobsController);
+
 router.get('/get-all-rejected', adminMiddleware ,getAllJobsReJectedController)
 
 router.get('/get-all-pending', adminMiddleware, getAllJobsPendingController)
@@ -14,8 +16,6 @@ router.post("/create", companyMiddleware, createJobController )
 router.get("/get-all-job", getAllJobsStatusTrueController);
 
 router.get('/get-all', getAllJobsController)
-
-router.post("/search", searchJobsController);
 
 router.get("/get-job/:companyId", getJobsByCompanyIdController)
 

@@ -186,7 +186,7 @@ const getAllCompaniesTrueController = async (req, res) => {
 
     const companies = await companyModel
       .find({ status: true })
-      .sort({ createdAt: -1 }) 
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -218,7 +218,7 @@ const getAllCompaniesRejectedController = async (req, res) => {
 
     const companies = await companyModel
       .find({ status: false })
-      .sort({ createdAt: -1 }) 
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -250,11 +250,13 @@ const getAllCompaniesPendingController = async (req, res) => {
 
     const companies = await companyModel
       .find({ status: undefined })
-      .sort({ createdAt: 1 }) 
+      .sort({ createdAt: 1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
-    const totalCompanies = await companyModel.countDocuments({ status: undefined });
+    const totalCompanies = await companyModel.countDocuments({
+      status: undefined,
+    });
 
     const totalPages = Math.ceil(totalCompanies / limit);
 
@@ -325,11 +327,7 @@ const updateCompanyStatusController = async (req, res) => {
 
 const searchCompaniesController = async (req, res) => {
   try {
-    const {
-      address = "",
-      search = "",
-      page = 1,
-    } = req.body;
+    const { address = "", search = "", page = 1 } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
@@ -338,18 +336,25 @@ const searchCompaniesController = async (req, res) => {
       // status: true,
     };
 
-    if (address) {
+    if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };
     }
 
-    if (search) {
-      const searchQuery = [
+    if (address && search) {
+      query.address = { $regex: new RegExp(address, "i") };
+      query.$or = [
         { name: { $regex: new RegExp(search, "i") } },
         { email: { $regex: new RegExp(search, "i") } },
         { phoneNumber: { $regex: new RegExp(search, "i") } },
       ];
+    }
 
-      query.$or = searchQuery;
+    if (!address && search) {
+      query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { email: { $regex: new RegExp(search, "i") } },
+        { phoneNumber: { $regex: new RegExp(search, "i") } },
+      ];
     }
 
     const sort = { createdAt: 1 };
@@ -382,8 +387,10 @@ const searchCompaniesController = async (req, res) => {
 };
 
 module.exports.searchCompaniesController = searchCompaniesController;
-module.exports.getAllCompaniesPendingController = getAllCompaniesPendingController;
-module.exports.getAllCompaniesRejectedController = getAllCompaniesRejectedController
+module.exports.getAllCompaniesPendingController =
+  getAllCompaniesPendingController;
+module.exports.getAllCompaniesRejectedController =
+  getAllCompaniesRejectedController;
 module.exports.updateCompanyStatusController = updateCompanyStatusController;
 module.exports.getAllCompaniesController = getAllCompaniesController;
 module.exports.getAllCompaniesTrueController = getAllCompaniesTrueController;

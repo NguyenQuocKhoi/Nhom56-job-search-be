@@ -291,11 +291,26 @@ const searchCandidatesController = async (req, res) => {
       // status: true,
     };
 
-    if (address) {
+    if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };
     }
 
-    if (search) {
+    if (address && search) {
+      query.address = { $regex: new RegExp(address, "i") };
+      const searchQuery = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { email: { $regex: new RegExp(search, "i") } },
+        { phoneNumber: { $regex: new RegExp(search, "i") } },
+        { skill: { $regex: new RegExp(search, "i") } },
+        { gender: { $regex: new RegExp(search, "i") } },
+        { education: { $regex: new RegExp(search, "i") } },
+        { experience: { $regex: new RegExp(search, "i") } },
+      ];
+
+      query.$or = searchQuery;
+    }
+
+    if (!address && search) {
       const searchQuery = [
         { name: { $regex: new RegExp(search, "i") } },
         { email: { $regex: new RegExp(search, "i") } },

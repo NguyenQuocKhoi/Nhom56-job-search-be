@@ -587,11 +587,27 @@ const searchJobsController = async (req, res) => {
       categoryIds = categories.map((category) => category._id);
     }
 
-    if (address) {
+    if (address && !search) {
       query.address = { $regex: new RegExp(address, "i") };
     }
 
-    if (search) {
+    if (address && search) {
+      query.address = { $regex: new RegExp(address, "i") };
+      const searchQuery = [
+        { title: { $regex: new RegExp(search, "i") } },
+        { description: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { experienceLevel: { $regex: new RegExp(search, "i") } },
+        { position: { $regex: new RegExp(search, "i") } },
+        { type: { $regex: new RegExp(search, "i") } },
+        ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]), 
+      ];
+
+      query.$or = searchQuery;
+    }
+
+    if (!address && search) {
       const searchQuery = [
         { title: { $regex: new RegExp(search, "i") } },
         { description: { $regex: new RegExp(search, "i") } },

@@ -11,9 +11,9 @@ const uploadAvatar = multer({
 
 const uploadCV = multer({
     limits: { fileSize: 10 * 1024 * 1024 }, 
-  }).single("avatar");
+  }).single("resume");
     
-router.get("/search", searchCandidatesController);
+router.post("/search", searchCandidatesController);
 
 router.get("/get-all", adminMiddleware, getAllCandidatesController);
 

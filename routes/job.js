@@ -15,7 +15,7 @@ router.get("/get-all-job", getAllJobsStatusTrueController);
 
 router.get('/get-all', getAllJobsController)
 
-router.get("/search", searchJobsController);
+router.post("/search", searchJobsController);
 
 router.get("/get-job/:companyId", getJobsByCompanyIdController)
 

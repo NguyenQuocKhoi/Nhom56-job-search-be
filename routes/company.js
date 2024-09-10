@@ -14,7 +14,7 @@ router.get("/get-all", getAllCompaniesController)
 
 router.get("/get-all-companies", getAllCompaniesTrueController)
 
-router.get("/search", searchCompaniesController);
+router.post("/search", searchCompaniesController);
 
 router.get("/:id", getCompanyByIdController)
 

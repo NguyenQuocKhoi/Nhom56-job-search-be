@@ -109,7 +109,7 @@ const updateAvatarController = async (req, res) => {
 const getCompanyByIdController = async (req, res) => {
   try {
     const userId = req.params.id;
-    const user = await userModel.findById(userId).select("name");
+    const user = await userModel.findById(userId).select("name email");
     if (!user) {
       return res.status(404).send({
         success: false,
@@ -121,6 +121,7 @@ const getCompanyByIdController = async (req, res) => {
       company = new companyModel({
         _id: userId,
         name: user.name,
+        email: user.email,
       });
     }
     if (!company) {

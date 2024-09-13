@@ -226,7 +226,7 @@ const checkCategoryController = async (req, res) => {
 
     const category = await categoryModel.findOne({ name });
     if (!category) {
-      return res.status(404).send({
+      return res.status(201).send({
         success: false,
         message: "Category name not found",
       });

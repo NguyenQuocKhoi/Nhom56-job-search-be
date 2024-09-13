@@ -73,5 +73,43 @@ const updateNotificationStatusController = async (req, res) => {
     });
   }
 };
+
+
+const getNotificationsByCompanyIdController = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+
+    if (!companyId) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide a company ID",
+      });
+    }
+
+    const notifications = await notificationModel
+      .find({ company: companyId })
+      .sort({ createdAt: -1 });
+
+    if (!notifications.length) {
+      return res.status(404).send({
+        success: false,
+        message: "No notifications found for this company",
+      });
+    }
+
+    return res.status(200).send({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while retrieving notifications",
+    });
+  }
+};
+
+module.exports.getNotificationsByCompanyIdController = getNotificationsByCompanyIdController;
 module.exports.updateNotificationStatusController = updateNotificationStatusController;
 module.exports.getNotificationsByCandidateIdController = getNotificationsByCandidateIdController;

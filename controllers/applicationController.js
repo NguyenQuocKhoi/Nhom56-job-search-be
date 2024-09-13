@@ -163,6 +163,7 @@ const updateApplicationStatusController = async (req, res) => {
 
     const notification = new notificationModel({
       candidate: application.candidate._id,
+      job:application.job._id,
       message: notificationMessage,
       status: false,
     });
@@ -182,6 +183,44 @@ const updateApplicationStatusController = async (req, res) => {
   }
 };
 
+// const getApplyByCanididateIdController = async (req, res) => {
+//   try {
+//     const { candidateId } = req.params;
+//     const { page = 1, limit = 10 } = req.query;
+
+//     const applications = await applicationModel
+//       .find({ candidate: candidateId })
+//       .sort({ submittedAt: 1 })
+//       .skip((page - 1) * limit)
+//       .limit(Number(limit));
+
+//     const totalApplications = await applicationModel.countDocuments({ candidate: candidateId });
+
+//     if (!applications || applications.length === 0) {
+//       return res.status(404).send({
+//         success: false,
+//         message: "No apply found for this candidate",
+//       });
+//     }
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Applications fetched successfully",
+//       applications,
+//       totalApplications,
+//       totalPages: Math.ceil(totalApplications / limit),
+//       currentPage: Number(page),
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in get apply by candidate ID API",
+//       error,
+//     });
+//   }
+// };
+
 const getApplyByCanididateIdController = async (req, res) => {
   try {
     const { candidateId } = req.params;
@@ -193,19 +232,30 @@ const getApplyByCanididateIdController = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
-    const totalApplications = await applicationModel.countDocuments({ candidate: candidateId });
+    const jobIds = applications.map(app => app.job);
 
-    if (!applications || applications.length === 0) {
+    const validJobs = await jobModel.find({
+      _id: { $in: jobIds },
+      status: true,
+    });
+
+    const validJobIds = validJobs.map(job => job._id.toString());
+
+    const filteredApplications = applications.filter(app => validJobIds.includes(app.job.toString()));
+
+    const totalApplications = filteredApplications.length;
+
+    if (totalApplications === 0) {
       return res.status(404).send({
         success: false,
-        message: "No apply found for this candidate",
+        message: "No applications found for this candidate with active jobs",
       });
     }
 
     res.status(200).send({
       success: true,
       message: "Applications fetched successfully",
-      applications,
+      applications: filteredApplications,
       totalApplications,
       totalPages: Math.ceil(totalApplications / limit),
       currentPage: Number(page),
@@ -219,6 +269,7 @@ const getApplyByCanididateIdController = async (req, res) => {
     });
   }
 };
+
 
 const getAllApplicationController = async (req, res) => {
   try {

@@ -449,31 +449,31 @@ const updateJobController = async (req, res) => {
       });
     }
 
-    if (title) job.title = title;
-    if (description) job.description = description;
-    if (requirements) job.requirements = requirements;
-    if (salary) job.salary = salary;
-    if (experienceLevel) job.experienceLevel = experienceLevel;
-    if (position) job.position = position;
-    if (address) job.address = address;
-    if (type) job.type = type;
-    if (numberOfCruiment) job.numberOfCruiment = numberOfCruiment;
-    if (expiredAt) {
-      job.expiredAt =
-        typeof expiredAt === "string" ? new Date(expiredAt) : expiredAt;
-    }
-    if (category) job.category = category;
+    const pendingUpdates = {
+      title: title || job.title,
+      description: description || job.description,
+      requirements: requirements || job.requirements,
+      salary: salary || job.salary,
+      experienceLevel: experienceLevel || job.experienceLevel,
+      position: position || job.position,
+      address: address || job.address,
+      type: type || job.type,
+      numberOfCruiment: numberOfCruiment || job.numberOfCruiment,
+      expiredAt: expiredAt
+        ? typeof expiredAt === "string"
+          ? new Date(expiredAt)
+          : expiredAt
+        : job.expiredAt,
+      category: category || job.category,
+      lastModified: Date.now(),
+    };
 
-    // job.status = false;
-    job.status = undefined;
-    job.lastModified = Date.now();
+    job.pendingUpdates = pendingUpdates;
     await job.save();
-
-    job = await jobModel.findById(job._id).populate("company");
 
     res.status(200).send({
       success: true,
-      message: "Job updated successfully",
+      message: "Job update is pending approval",
       job: job,
     });
   } catch (error) {
@@ -522,24 +522,23 @@ const updateJobStatusController = async (req, res) => {
   try {
     const { jobId, status } = req.body;
 
-    if (!jobId) {
-      return res.status(400).send({
-        success: false,
-        message: "Please provide job ID",
-      });
-    }
-
-    const job = await jobModel.findById(jobId);
-    if (!job) {
+    let job = await jobModel.findById(jobId);
+    if (!job || !job.pendingUpdates) {
       return res.status(404).send({
         success: false,
-        message: "Job not found",
+        message: "No pending updates found for this job",
       });
     }
 
-    job.status = status;
-    await job.save();
+    job.pendingUpdates.status = status;
+    if (job.pendingUpdates.status === false) {
+      job.pendingUpdates = null;
+    } else {
+      Object.assign(job, job.pendingUpdates);
+      job.pendingUpdates = null;
+    }
 
+    await job.save();
     const notificationMessage =
       status === true
         ? `Your ${job.title} job has been approved.`
@@ -547,30 +546,30 @@ const updateJobStatusController = async (req, res) => {
 
     const notification = new notificationModel({
       job: jobId,
+      company: job.company,
       message: notificationMessage,
     });
 
     await notification.save();
-    return res.status(200).send({
+
+    res.status(200).send({
       success: true,
-      message: `job status updated to ${status}. ${notificationMessage}`,
+      message: "Job updated successfully after status approval",
+      job: job,
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).send({
+    console.log(error);
+    res.status(500).send({
       success: false,
-      message: "An error occurred while updating the job status.",
+      message: "Error in finalizing job update",
+      error,
     });
   }
 };
 
 const searchJobsController = async (req, res) => {
   try {
-    const {
-      address = "",
-      search = "",
-      page = 1,
-    } = req.body;
+    const { address = "", search = "", page = 1 } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
@@ -601,7 +600,7 @@ const searchJobsController = async (req, res) => {
         { position: { $regex: new RegExp(search, "i") } },
         { type: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]), 
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
 
       query.$or = searchQuery;
@@ -616,7 +615,7 @@ const searchJobsController = async (req, res) => {
         { position: { $regex: new RegExp(search, "i") } },
         { type: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]), 
+        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
       ];
 
       query.$or = searchQuery;
@@ -654,14 +653,17 @@ const searchJobsController = async (req, res) => {
 module.exports.searchJobsController = searchJobsController;
 module.exports.getAllJobsPendingController = getAllJobsPendingController;
 module.exports.getAllJobsReJectedController = getAllJobsReJectedController;
-module.exports.getJobsFalseByCompanyIdController = getJobsFalseByCompanyIdController;
-module.exports.getJobsNotStatusByCompanyIdController = getJobsNotStatusByCompanyIdController;
+module.exports.getJobsFalseByCompanyIdController =
+  getJobsFalseByCompanyIdController;
+module.exports.getJobsNotStatusByCompanyIdController =
+  getJobsNotStatusByCompanyIdController;
 module.exports.getAllJobsStatusTrueController = getAllJobsStatusTrueController;
 module.exports.updateJobStatusController = updateJobStatusController;
 module.exports.deleteJobController = deleteJobController;
 module.exports.updateJobController = updateJobController;
 module.exports.getJobByIdController = getJobByIdController;
 module.exports.getJobsByCompanyIdController = getJobsByCompanyIdController;
-module.exports.getJobsTrueByCompanyIdController = getJobsTrueByCompanyIdController;
+module.exports.getJobsTrueByCompanyIdController =
+  getJobsTrueByCompanyIdController;
 module.exports.getAllJobsController = getAllJobsController;
 module.exports.createJobController = createJobController;

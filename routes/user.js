@@ -11,6 +11,9 @@ const {
   searchByCriteriaController,
   googleLoginController,
   updateUserStatusController,
+  getUserByIdController,
+  verifyEmailController,
+  resendVerificationController,
 } = require("../controllers/userController");
 const {
   verifyToken,
@@ -24,6 +27,10 @@ router.post("/register", registerController);
 
 router.post("/login", loginController);
 
+router.post("/verify", verifyEmailController);
+
+router.post('/resend-verification', resendVerificationController);
+
 router.put("/change-password/:id", verifyToken, updatePasswordController);
 
 router.post("/forgot-password", forgotPasswordController)
@@ -35,5 +42,8 @@ router.put("/update/:id", verifyToken, updateUserController);
 router.post("/login/google", googleLoginController);
 
 router.put("/update-status/:id", adminMiddleware, updateUserStatusController);
+
+router.get("/:id", adminMiddleware, getUserByIdController)
+
 
 module.exports = router;

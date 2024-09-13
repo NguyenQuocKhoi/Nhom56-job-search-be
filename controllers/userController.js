@@ -3,6 +3,7 @@ const candidateModel = require("../models/Candidate");
 const companyModel = require("../models/Company");
 const jobModel = require("../models/Job");
 const categoryModel = require("../models/Category");
+const sendVerificationEmail = require("../utils/index")
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
@@ -19,6 +20,76 @@ const {
 } = require("../validation/user");
 const { generateRandomPassword } = require("../utils");
 
+// const registerController = async (req, res) => {
+//   try {
+//     const { name, email, password, role } = req.body;
+
+//     const nameValidationResult = validateName(name);
+//     const emailValidationResult = validateEmail(email);
+//     const passwordValidationResult = validatePassword(password);
+
+//     if (!nameValidationResult.success) {
+//       return res.status(400).json({ error: nameValidationResult.message });
+//     }
+
+//     if (!emailValidationResult.success) {
+//       return res.status(400).json({ error: emailValidationResult.message });
+//     }
+
+//     if (!passwordValidationResult.success) {
+//       return res.status(400).json({ error: passwordValidationResult.message });
+//     }
+
+//     if (!name || !email || !password || !role) {
+//       return res.status(400).send({
+//         success: false,
+//         message: "Please provide all required fields",
+//       });
+//     }
+
+//     const existingUser = await userModel.findOne({ email });
+//     if (existingUser) {
+//       return res.status(409).send({
+//         success: false,
+//         message: "This email has already been created",
+//       });
+//     }
+
+//     const salt = await bcrypt.genSalt(10);
+//     const hashPassword = await bcrypt.hash(password, salt);
+
+//     try {
+//       const user = new userModel({
+//         name,
+//         password: hashPassword,
+//         email,
+//         role,
+//       });
+
+//       const savedUser = await user.save();
+//       const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, {
+//         expiresIn: "3h",
+//       });
+
+//       const userResponse = savedUser.toObject();
+//       delete userResponse.password;
+
+//       res.header("auth-token", token).json({token: token, user: userResponse });
+//     } catch (err) {
+//       res.status(400).send(err);
+//     }
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in Register API",
+//       error,
+//     });
+//   }
+// };
+
+const verificationCodes = {}; 
+
 const registerController = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -27,65 +98,147 @@ const registerController = async (req, res) => {
     const emailValidationResult = validateEmail(email);
     const passwordValidationResult = validatePassword(password);
 
-    if (!nameValidationResult.success) {
-      return res.status(400).json({ error: nameValidationResult.message });
-    }
-
-    if (!emailValidationResult.success) {
-      return res.status(400).json({ error: emailValidationResult.message });
-    }
-
-    if (!passwordValidationResult.success) {
-      return res.status(400).json({ error: passwordValidationResult.message });
-    }
-
-    if (!name || !email || !password || !role) {
-      return res.status(400).send({
-        success: false,
-        message: "Please provide all required fields",
-      });
+    if (!nameValidationResult.success || !emailValidationResult.success || !passwordValidationResult.success) {
+      return res.status(400).json({ error: "Invalid input data" });
     }
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
-      return res.status(409).send({
-        success: false,
-        message: "This email has already been created",
-      });
+      return res.status(409).json({ success: false, message: "Email already registered" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashPassword = await bcrypt.hash(password, salt);
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 3 * 60 * 1000;
+
+    verificationCodes[email] = { name, email, password, role, verificationCode, expiresAt };
+
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Your Verification Code',
+      text: `Your verification code is ${verificationCode}. It will expire in 3 minutes.`,
+    };
 
     try {
-      const user = new userModel({
-        name,
-        password: hashPassword,
-        email,
-        role,
-      });
-
-      const savedUser = await user.save();
-      const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, {
-        expiresIn: "3h",
-      });
-
-      const userResponse = savedUser.toObject();
-      delete userResponse.password;
-
-      res.header("auth-token", token).json({token: token, user: userResponse });
-    } catch (err) {
-      res.status(400).send(err);
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Error sending verification email:', error);
     }
-  } catch (error) {
-    console.log(error);
-    res.status(500).send({
-      success: false,
-      message: "Error in Register API",
-      error,
+
+    res.status(200).json({
+      success: true,
+      message: "Verification code sent to your email. Please verify to complete registration.",
     });
+  } catch (error) {
+    console.error("Error in registerController:", error);
+    res.status(500).json({ success: false, message: "Error in registration", error });
   }
 };
+
+
+const verifyEmailController = async (req, res) => {
+  try {
+    const { email, verificationCode } = req.body;
+
+    const storedData = verificationCodes[email];
+    if (!storedData) {
+      return res.status(400).json({ success: false, message: "No verification code found for this email" });
+    }
+
+    if (Date.now() > storedData.expiresAt) {
+      delete verificationCodes[email];
+      return res.status(400).json({ success: false, message: "Verification code has expired" });
+    }
+
+    if (storedData.verificationCode !== verificationCode) {
+      return res.status(400).json({ success: false, message: "Invalid verification code" });
+    }
+
+    delete verificationCodes[email];
+
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(storedData.password, salt);
+
+    const user = new userModel({
+      name: storedData.name,
+      email: storedData.email,
+      password: hashPassword,
+      role: storedData.role,
+    });
+
+    const savedUser = await user.save();
+
+    const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, { expiresIn: "3h" });
+
+    const userResponse = savedUser.toObject();
+    delete userResponse.password;
+
+    res.status(200).json({
+      success: true,
+      message: "Registration completed successfully",
+      token,
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error("Error in verifyController:", error);
+    res.status(500).json({ success: false, message: "Error in verification", error });
+  }
+};
+
+const resendVerificationController = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const storedData = verificationCodes[email];
+    if (!storedData) {
+      return res.status(400).json({ success: false, message: "No pending verification for this email" });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 3 * 60 * 1000; 
+
+    verificationCodes[email] = { ...storedData, verificationCode, expiresAt };
+
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Your New Verification Code',
+      text: `Your new verification code is ${verificationCode}. It will expire in 3 minutes.`,
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      return res.status(500).json({ success: false, message: "Error sending verification email" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "New verification code sent to your email. Please verify to complete registration.",
+    });
+  } catch (error) {
+    console.error("Error in resendVerificationController:", error);
+    res.status(500).json({ success: false, message: "Error in resending verification code", error });
+  }
+};
+
 
 const loginController = async (req, res) => {
   try {
@@ -306,139 +459,6 @@ const checkEmailController = async (req, res) => {
   }
 };
 
-// const searchByCriteriaController = async (req, res) => {
-//   try {
-//     const { address = "", search = "", page = 1 } = req.body;
-
-//     const limit = 16;
-//     const skip = (page - 1) * limit;
-
-//     let query = {
-//       status: true,
-//     };
-
-//     if (address && !search) {
-//       query.address = { $regex: new RegExp(address, "i") };
-//     }
-
-//     if (address && search) {
-//       query.address = { $regex: new RegExp(address, "i") };
-//       query.$or = [
-//         { title: { $regex: new RegExp(search, "i") } },
-//         { name: { $regex: new RegExp(search, "i") } },
-//         { description: { $regex: new RegExp(search, "i") } },
-//         { experienceLevel: { $regex: new RegExp(search, "i") } },
-//         { position: { $regex: new RegExp(search, "i") } },
-//         { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
-//         { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-//         { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-//         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
-//       ];
-//     }
-
-//     if (!address && search) {
-//       query.$or = [
-//         { title: { $regex: new RegExp(search, "i") } },
-//         { name: { $regex: new RegExp(search, "i") } },
-//         { description: { $regex: new RegExp(search, "i") } },
-//         { experienceLevel: { $regex: new RegExp(search, "i") } },
-//         { position: { $regex: new RegExp(search, "i") } },
-//         { salary: isNaN(Number(search)) ? { $exists: true } : Number(search) },
-//         { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-//         { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-//         ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
-//       ];
-//     }
-
-//     const jobResults = await jobModel.aggregate([
-//       { $match: query },
-//       {
-//         $lookup: {
-//           from: "categories",
-//           localField: "category",
-//           foreignField: "_id",
-//           as: "categoryDetails",
-//         },
-//       },
-//       { $unwind: "$categoryDetails" },
-//       {
-//         $match: {
-//           $or: [
-//             { "categoryDetails.name": { $regex: new RegExp(search, "i") } },
-//           ],
-//         },
-//       },
-//       { $skip: skip },
-//       { $limit: limit },
-//       { $sort: { status: -1 } },
-//       {
-//         $project: {
-//           title: 1,
-//           description: 1,
-//           salary: 1,
-//           experienceLevel: 1,
-//           position: 1,
-//           address: 1,
-//           type: 1,
-//           expiredAt: 1,
-//           createdAt: 1,
-//           lastModified: 1,
-//           company: 1,
-//           created_by: 1,
-//           applications: 1,
-//           numberOfCruiment: 1,
-//           category: "$categoryDetails.name",
-//         },
-//       },
-//     ]);
-
-//     const companyResults = await companyModel
-//       .find(query)
-//       .sort({ status: -1 })
-//       .skip(skip)
-//       .limit(limit);
-
-//     const candidateResults = await candidateModel
-//       .find(query)
-//       .sort({ status: -1 })
-//       .skip(skip)
-//       .limit(limit);
-
-//     const [totalCompanyResults, totalCandidateResults, totalJobResults] =
-//       await Promise.all([
-//         companyModel.countDocuments(query),
-//         candidateModel.countDocuments(query),
-//         jobModel.countDocuments(query),
-//       ]);
-
-//     res.status(200).json({
-//       success: true,
-//       data: {
-//         companies: companyResults,
-//         candidates: candidateResults,
-//         jobs: jobResults,
-//       },
-//       pagination: {
-//         page,
-//         limit,
-//         totalResults:
-//           totalCompanyResults + totalCandidateResults + totalJobResults,
-//         totalPages: Math.ceil(
-//           (totalCompanyResults + totalCandidateResults + totalJobResults) /
-//             limit
-//         ),
-//       },
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Server Error",
-//     });
-//   }
-// };
-
-
 
 const searchByCriteriaController = async (req, res) => {
   try {
@@ -648,6 +668,33 @@ const updateUserStatusController = async (req, res) => {
   }
 };
 
+const getUserByIdController = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        message: "User not found",
+      });
+    }
+    res.status(200).send({
+      success: true,
+      message: "Get User successfully",
+      user: user,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Get User API",
+      error,
+    });
+  }
+};
+
+module.exports.verifyEmailController = verifyEmailController;
+module.exports.getUserByIdController = getUserByIdController;
 module.exports.updateUserStatusController = updateUserStatusController;
 module.exports.googleLoginController = googleLoginController;
 module.exports.searchByCriteriaController = searchByCriteriaController;
@@ -657,3 +704,4 @@ module.exports.updateUserController = updateUserController;
 module.exports.updatePasswordController = updatePasswordController;
 module.exports.registerController = registerController;
 module.exports.loginController = loginController;
+module.exports.resendVerificationController = resendVerificationController;

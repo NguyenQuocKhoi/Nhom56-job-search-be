@@ -24,6 +24,11 @@ const companySchema = new mongoose.Schema({
     type: Boolean,
     // default: false,
   },
+
+  pendingUpdates: {
+    type: Object,
+    default: null,
+  },
  
 });
 

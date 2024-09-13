@@ -1,5 +1,7 @@
 const DataURIParser = require("datauri/parser.js");
-
+const nodemailer = require('nodemailer');
+const dotenv = require("dotenv");
+dotenv.config();
 const path = require("path");
 
 const generateRandomPassword = () => {

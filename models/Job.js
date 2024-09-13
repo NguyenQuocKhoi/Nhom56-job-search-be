@@ -58,6 +58,11 @@ const jobSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
+
+  pendingUpdates: {
+    type: Object,
+    default: null,
+  },
 });
 
 module.exports = mongoose.model("Job", jobSchema);

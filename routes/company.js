@@ -6,6 +6,10 @@ const {verifyToken, companyMiddleware, adminMiddleware, } = require("../middlewa
 const { updateCompanyController, updateAvatarController, getCompanyByIdController, getAllCompaniesController, updateCompanyStatusController, getAllCompaniesTrueController, getAllCompaniesRejectedController, getAllCompaniesPendingController, searchCompaniesController } = require("../controllers/companyController");
 
 
+const uploadAvatar = multer({
+    limits: { fileSize: 5 * 1024 * 1024 }, 
+  }).single("avatar");
+
 router.get("/get-all-companies-rejected", adminMiddleware, getAllCompaniesRejectedController);
 
 router.get("/get-all-companies-pending",adminMiddleware, getAllCompaniesPendingController);
@@ -18,7 +22,7 @@ router.post("/search", searchCompaniesController);
 
 router.get("/:id", getCompanyByIdController)
 
-router.put("/update/:id", companyMiddleware, upload.single("resume"), updateCompanyController)
+router.put("/update/:id", companyMiddleware, uploadAvatar, updateCompanyController)
 
 router.put("/upload-avatar/:id", companyMiddleware, upload.single("avatar"), updateAvatarController)
 

@@ -4,10 +4,68 @@ const { getDataUri } = require("../utils");
 const cloudinary = require("cloudinary");
 const notificationModel = require("../models/notification");
 
+// const updateCompanyController = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     const user = await userModel.findById(userId).select("email");
+//     if (!user) {
+//       return res.status(404).send({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     let company = await companyModel.findById(userId).select("-__v");
+
+//     if (!company) {
+//       company = new companyModel({
+//         _id: userId,
+//         // name: user.name,
+//         email: user.email,
+//       });
+//     }
+//     const { phoneNumber, address, website, name } = req.body;
+
+//     if (!phoneNumber || !address || !website) {
+//       return res.status(400).send({
+//         success: false,
+//         message: "Please provide all required fields",
+//       });
+//     }
+//     company.name = name;
+//     company.phoneNumber = phoneNumber;
+//     company.address = address;
+//     company.website = website;
+//     company.email = user.email;
+//     company.status = undefined;
+//     // company.status = false;
+//     company.lastModified = Date.now();
+
+//     // user.name = company.name;
+//     // await user.save();
+//     await company.save();
+
+//     res.status(200).send({
+//       success: true,
+//       message: "company updated successfully",
+//       company: company,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in Update company API",
+//       error,
+//     });
+//   }
+// };
+
 const updateCompanyController = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const user = await userModel.findById(userId).select("email");
+    const { id: userId } = req.params;
+    const { phoneNumber, address, website, name } = req.body;
+
+    const user = await userModel.findById(userId).select("email name");
     if (!user) {
       return res.status(404).send({
         success: false,
@@ -16,45 +74,47 @@ const updateCompanyController = async (req, res) => {
     }
 
     let company = await companyModel.findById(userId).select("-__v");
-
     if (!company) {
       company = new companyModel({
         _id: userId,
-        // name: user.name,
         email: user.email,
+        name: user.name
       });
     }
-    const { phoneNumber, address, website, name } = req.body;
 
-    if (!phoneNumber || !address || !website) {
-      return res.status(400).send({
-        success: false,
-        message: "Please provide all required fields",
-      });
+    let avatarUrl;
+    const file = req.file;
+    if (file) {
+      const fileUri = getDataUri(file); 
+      const cloudResponse = await cloudinary.uploader.upload(fileUri.content); 
+      if (cloudResponse) {
+        avatarUrl = cloudResponse.secure_url; 
+      }
     }
-    company.name = name;
-    company.phoneNumber = phoneNumber;
-    company.address = address;
-    company.website = website;
-    company.email = user.email;
-    company.status = undefined;
-    // company.status = false;
-    company.lastModified = Date.now();
 
-    // user.name = company.name;
-    // await user.save();
+    const pendingUpdates = {
+      name: name || user.name,
+      phoneNumber: phoneNumber || company.phoneNumber,
+      address: address || company.address,
+      website: website || company.website,
+      email: user.email, 
+      avatar: avatarUrl || company.avatar, 
+      lastModified: Date.now(),
+    };
+
+    company.pendingUpdates = pendingUpdates;
+
     await company.save();
-
     res.status(200).send({
       success: true,
-      message: "company updated successfully",
-      company: company,
+      message: "Company update is pending approval",
+      company,
     });
   } catch (error) {
     console.log(error);
     res.status(500).send({
       success: false,
-      message: "Error in Update company API",
+      message: "Error in Update Company API",
       error,
     });
   }
@@ -289,6 +349,9 @@ const updateCompanyStatusController = async (req, res) => {
       });
     }
 
+    const user = await userModel.findById(companyId);
+    // console.log(user);
+    
     const company = await companyModel.findById(companyId);
     if (!company) {
       return res.status(404).send({
@@ -297,8 +360,19 @@ const updateCompanyStatusController = async (req, res) => {
       });
     }
 
-    company.status = status;
-    company.lastModified = Date.now();
+
+    company.pendingUpdates.status = status;
+    if (company.pendingUpdates.status === false) {
+      company.pendingUpdates = null;
+    } else {
+      Object.assign(company, company.pendingUpdates);
+      user.name =  company.pendingUpdates.name;
+      await user.save();
+      company.pendingUpdates = null;
+      
+    }
+    // company.status = status;
+    // company.lastModified = Date.now();
     await company.save();
 
     const notificationMessage =

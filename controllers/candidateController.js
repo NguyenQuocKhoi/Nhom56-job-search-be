@@ -67,6 +67,7 @@ const updateCandidateController = async (req, res) => {
     user.name = candidate.name;
     await candidate.save();
 
+    await user.save();
     res.status(200).send({
       success: true,
       message: "Candidate updated successfully",

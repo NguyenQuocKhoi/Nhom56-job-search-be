@@ -9,4 +9,5 @@ router.post("/create", verifyToken, createSaveJobController);
 router.delete("/delete/:saveJobId", verifyToken, deleteSaveJobController);
 
 router.get("/gets/:candidateId", verifyToken, getSaveJobsByCandidateIdController)
+
 module.exports = router;

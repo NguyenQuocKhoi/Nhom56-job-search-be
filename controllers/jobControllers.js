@@ -4,6 +4,9 @@ const applicationModel = require("../models/Application");
 const notificationModel = require("../models/notification");
 const saveJobModel = require("../models/SaveJobs");
 const categoryModel = require("../models/Category");
+const candidateModel = require("../models/Candidate");
+const skillModel = require("../models/Skill");
+const mongoose = require("mongoose");
 
 const createJobController = async (req, res) => {
   try {
@@ -14,13 +17,16 @@ const createJobController = async (req, res) => {
       salary,
       experienceLevel,
       position,
-      address,
+      // address,
+      street,
+      city,
       type,
       expiredAt,
       companyId,
       numberOfCruiment,
       category,
-      status,
+      requirementSkills,
+      interest,
     } = req.body;
 
     const company = await companyModel.findById(companyId);
@@ -54,10 +60,14 @@ const createJobController = async (req, res) => {
       title: title,
       description: description,
       requirements: requirements,
+      requirementSkills: requirementSkills,
+      interest: interest,
       salary: salary,
       experienceLevel: experienceLevel,
       position: position,
-      address: address,
+      // address: address,
+      street: street,
+      city: city,
       type: type,
       expiredAt: expiredAtDate,
       numberOfCruiment: numberOfCruiment,
@@ -434,10 +444,13 @@ const updateJobController = async (req, res) => {
       salary,
       experienceLevel,
       position,
-      address,
+      street,
+      city,
       type,
       expiredAt,
       numberOfCruiment,
+      requirementSkills,
+      interest,
       category,
     } = req.body;
 
@@ -449,14 +462,31 @@ const updateJobController = async (req, res) => {
       });
     }
 
+    let processedRequirements = [];
+    if (requirementSkills && Array.isArray(requirementSkills)) {
+      processedRequirements = requirementSkills.map((id) => {
+        return mongoose.Types.ObjectId.isValid(id)
+          ? new mongoose.Types.ObjectId(id)
+          : id;
+      });
+    }
+
     const pendingUpdates = {
       title: title || job.title,
       description: description || job.description,
-      requirements: requirements || job.requirements,
+      // requirements: requirements || job.requirements,
+      requirementSkills:
+        processedRequirements.length > 0
+          ? processedRequirements
+          : job.requirementSkills,
       salary: salary || job.salary,
       experienceLevel: experienceLevel || job.experienceLevel,
+      requirements: requirements || job.requirements,
+      interest: interest || job.interest,
       position: position || job.position,
-      address: address || job.address,
+      // address: address || job.address,
+      street: street || job.street,
+      city: city || job.city,
       type: type || job.type,
       numberOfCruiment: numberOfCruiment || job.numberOfCruiment,
       expiredAt: expiredAt
@@ -465,6 +495,7 @@ const updateJobController = async (req, res) => {
           : expiredAt
         : job.expiredAt,
       category: category || job.category,
+      status: undefined,
       lastModified: Date.now(),
     };
 
@@ -523,19 +554,30 @@ const updateJobStatusController = async (req, res) => {
     const { jobId, status } = req.body;
 
     let job = await jobModel.findById(jobId);
-    if (!job || !job.pendingUpdates) {
+    if (!job) {
       return res.status(404).send({
         success: false,
         message: "No pending updates found for this job",
       });
     }
 
-    job.pendingUpdates.status = status;
-    if (job.pendingUpdates.status === false) {
-      job.pendingUpdates = null;
+    // job.pendingUpdates.status = status;
+    // if (job.pendingUpdates.status === false) {
+    //   job.pendingUpdates = null;
+    // } else {
+    //   Object.assign(job, job.pendingUpdates);
+    //   job.pendingUpdates = null;
+    // }
+
+    if (job.pendingUpdates) {
+      if (job.pendingUpdates.status === false) {
+        job.pendingUpdates = null;
+      } else {
+        Object.assign(job, job.pendingUpdates);
+        job.pendingUpdates = null;
+      }
     } else {
-      Object.assign(job, job.pendingUpdates);
-      job.pendingUpdates = null;
+      job.status = status;
     }
 
     await job.save();
@@ -569,56 +611,101 @@ const updateJobStatusController = async (req, res) => {
 
 const searchJobsController = async (req, res) => {
   try {
-    const { address = "", search = "", page = 1 } = req.body;
+    const { city = "", search = "", page = 1 } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
 
-    let query = {
-      // status: true,
-    };
+    let query = {};
 
     let categoryIds = [];
+    let skillIds = [];
+
+    const parseSearchString = async (str) => {
+      const words = str.split(/\s+/);
+      let groupedSkills = [];
+      let currentPhrase = [];
+
+      for (let word of words) {
+        currentPhrase.push(word);
+        const currentSkill = currentPhrase.join(" ");
+
+        const skill = await skillModel.findOne({
+          skillName: { $regex: new RegExp(`^${currentSkill}$`, "i") },
+        });
+
+        if (skill) {
+          groupedSkills.push(currentSkill);
+          currentPhrase = [];
+        }
+      }
+
+      return groupedSkills;
+    };
+
     if (search) {
       const categories = await categoryModel.find({
         name: { $regex: new RegExp(search, "i") },
       });
       categoryIds = categories.map((category) => category._id);
+      const skillNames = await parseSearchString(search);
+
+      const skills = await skillModel.find({
+        skillName: {
+          $in: skillNames.map((name) => new RegExp(`^${name}$`, "i")),
+        },
+      });
+      skillIds = skills.map((skill) => skill._id);
     }
 
-    if (address && !search) {
-      query.address = { $regex: new RegExp(address, "i") };
+    if (city && !search) {
+      query.city = { $regex: new RegExp(city, "i") };
     }
 
-    if (address && search) {
-      query.address = { $regex: new RegExp(address, "i") };
+    if (city && search) {
+      query.city = { $regex: new RegExp(city, "i") };
       const searchQuery = [
         { title: { $regex: new RegExp(search, "i") } },
         { description: { $regex: new RegExp(search, "i") } },
-        { requirements: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
+        { salary: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { interest: { $regex: new RegExp(search, "i") } },
         { type: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
+        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(isNaN(Number(search))
+          ? []
+          : [{ numberOfCruiment: Number(search) }]),
       ];
 
       query.$or = searchQuery;
     }
 
-    if (!address && search) {
+    if (!city && search) {
       const searchQuery = [
         { title: { $regex: new RegExp(search, "i") } },
         { description: { $regex: new RegExp(search, "i") } },
-        { requirements: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
         { type: { $regex: new RegExp(search, "i") } },
+        { salary: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { interest: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
+        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+
+        ...(isNaN(Number(search))
+          ? []
+          : [{ numberOfCruiment: Number(search) }]),
       ];
 
       query.$or = searchQuery;
+    }
+
+    if (categoryIds.length > 0) {
+      query.category = { $in: categoryIds };
     }
 
     const sort = { createdAt: 1 };
@@ -650,6 +737,76 @@ const searchJobsController = async (req, res) => {
   }
 };
 
+const checkCandidateWithAllJobsSkillsController = async (req, res) => {
+  try {
+    const { candidateId } = req.body;
+    const candidate = await candidateModel.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        message: "Candidate not found",
+      });
+    }
+
+    const candidateSkills = candidate.skill || [];
+    const jobs = await jobModel.find({ status: true });
+    const matchingJobs = [];
+
+    for (let job of jobs) {
+      if (!Array.isArray(job.requirementSkills)) {
+        continue;
+      }
+
+      const jobSkills = job.requirementSkills;
+
+      const matchingSkills = candidateSkills.filter((skillId) =>
+        jobSkills.includes(skillId)
+      );
+
+      if (matchingSkills.length > 0) {
+        matchingJobs.push({
+          jobId: job._id,
+          companyId: job.company,
+          title: job.title,
+          description: job.description,
+          requirementSkills: job.requirementSkills,
+          requirements : job.requirements,
+          interest : job.interest,
+          salary: job.salary,
+          experienceLevel: job.experienceLevel,
+          position: job.position,
+          street: job.street,
+          city: job.city,
+          type: job.type,
+          numberOfCruiment: job.numberOfCruiment,
+          expiredAt: job.expiredAt,
+          category: job.category,
+        });
+      }
+    }
+
+    if (matchingJobs.length > 0) {
+      return res.status(200).json({
+        success: true,
+        matchingJobs,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: "No jobs with matching skills found",
+      });
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+module.exports.checkCandidateWithAllJobsSkillsController =
+  checkCandidateWithAllJobsSkillsController;
 module.exports.searchJobsController = searchJobsController;
 module.exports.getAllJobsPendingController = getAllJobsPendingController;
 module.exports.getAllJobsReJectedController = getAllJobsReJectedController;

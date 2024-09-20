@@ -2,8 +2,11 @@ const express = require("express");
 const multer = require("multer");
 const upload = multer();
 const router = express.Router();
-const {verifyToken, companyMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController, getJobsFalseByCompanyIdController, getJobsNotStatusByCompanyIdController, getAllJobsReJectedController, getAllJobsPendingController, searchJobsController } = require("../controllers/jobControllers");
+const {verifyToken, companyMiddleware, adminMiddleware, candidateMiddleware, } = require("../middlewares/authMiddlewares");
+const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController, getJobsFalseByCompanyIdController, getJobsNotStatusByCompanyIdController, getAllJobsReJectedController, getAllJobsPendingController, searchJobsController, checkCandidateWithAllJobsSkillsController,  } = require("../controllers/jobControllers");
+
+
+router.post("/recommended-for-candidate", candidateMiddleware, checkCandidateWithAllJobsSkillsController)
 
 router.post("/search", searchJobsController);
 
@@ -26,6 +29,8 @@ router.get("/get-jobs-rejected/:companyId", getJobsFalseByCompanyIdController);
 router.get("/get-jobs-pending/:companyId", getJobsNotStatusByCompanyIdController);
 
 router.get("/:jobId", getJobByIdController);
+
+
 
 router.put("/update/:jobId", companyMiddleware, updateJobController);
 

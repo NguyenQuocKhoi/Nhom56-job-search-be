@@ -28,6 +28,11 @@ const categoryRouter = require("./routes/category");
 
 const saveJobRouter = require("./routes/saveJobs")
 
+const skillRouter = require("./routes/skill");
+
+const saveCandidateRouter = require("./routes/saveCandidate")
+
+
 dotenv.config();
 
 connectDB();
@@ -37,7 +42,18 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(cors());
 app.use(cookieParser());
-app.use(passport.initialize());
+
+// app.use(session({
+//   secret: process.env.SESSION_SECRET, 
+//   resave: false,
+//   saveUninitialized: true,
+//   // cookie: { secure: false } 
+// }));
+
+app.set('view engine', 'ejs');
+
+// app.use(passport.initialize());
+// app.use(passport.session());
 
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -53,6 +69,8 @@ app.use("/api/v1/application", applicationRouter);
 app.use("/api/v1/notification", notificationRouter);
 app.use("/api/v1/category", categoryRouter);
 app.use("/api/v1/save-job", saveJobRouter);
+app.use("/api/v1/save-candidate", saveCandidateRouter);
+app.use("/api/v1/skill", skillRouter);
 
 const PORT = process.env.PORT;
 

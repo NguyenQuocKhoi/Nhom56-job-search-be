@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, "passsword is required"],
+    // required: [true, "passsword is required"],
   },
   // phoneNumber: {
   //   type: String,
@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ["admin", "candidate", "company"],
-    required: [true, "role is required"],
+    // required: [true, "role is required"],
   },
 });
 

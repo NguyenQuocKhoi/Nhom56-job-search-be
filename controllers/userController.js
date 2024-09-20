@@ -3,12 +3,14 @@ const candidateModel = require("../models/Candidate");
 const companyModel = require("../models/Company");
 const jobModel = require("../models/Job");
 const categoryModel = require("../models/Category");
-const sendVerificationEmail = require("../utils/index")
+const skillModel = require("../models/Skill");
+const sendVerificationEmail = require("../utils/index");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const nodemailer = require("nodemailer");
 const { OAuth2Client } = require("google-auth-library");
+const GooglePlusTokenStrategy = require("passport-google-plus-token");
 const passport = require("passport");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 dotenv.config();
@@ -88,7 +90,7 @@ const { generateRandomPassword } = require("../utils");
 //   }
 // };
 
-const verificationCodes = {}; 
+const verificationCodes = {};
 
 const registerController = async (req, res) => {
   try {
@@ -98,22 +100,37 @@ const registerController = async (req, res) => {
     const emailValidationResult = validateEmail(email);
     const passwordValidationResult = validatePassword(password);
 
-    if (!nameValidationResult.success || !emailValidationResult.success || !passwordValidationResult.success) {
+    if (
+      !nameValidationResult.success ||
+      !emailValidationResult.success ||
+      !passwordValidationResult.success
+    ) {
       return res.status(400).json({ error: "Invalid input data" });
     }
 
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ success: false, message: "Email already registered" });
+      return res
+        .status(409)
+        .json({ success: false, message: "Email already registered" });
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
     const expiresAt = Date.now() + 3 * 60 * 1000;
 
-    verificationCodes[email] = { name, email, password, role, verificationCode, expiresAt };
+    verificationCodes[email] = {
+      name,
+      email,
+      password,
+      role,
+      verificationCode,
+      expiresAt,
+    };
 
     const transporter = nodemailer.createTransport({
-      service: 'Gmail',
+      service: "Gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -123,26 +140,28 @@ const registerController = async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Your Verification Code',
+      subject: "Your Verification Code",
       text: `Your verification code is ${verificationCode}. It will expire in 3 minutes.`,
     };
 
     try {
       await transporter.sendMail(mailOptions);
     } catch (error) {
-      console.error('Error sending verification email:', error);
+      console.error("Error sending verification email:", error);
     }
 
     res.status(200).json({
       success: true,
-      message: "Verification code sent to your email. Please verify to complete registration.",
+      message:
+        "Verification code sent to your email. Please verify to complete registration.",
     });
   } catch (error) {
     console.error("Error in registerController:", error);
-    res.status(500).json({ success: false, message: "Error in registration", error });
+    res
+      .status(500)
+      .json({ success: false, message: "Error in registration", error });
   }
 };
-
 
 const verifyEmailController = async (req, res) => {
   try {
@@ -150,16 +169,23 @@ const verifyEmailController = async (req, res) => {
 
     const storedData = verificationCodes[email];
     if (!storedData) {
-      return res.status(400).json({ success: false, message: "No verification code found for this email" });
+      return res.status(400).json({
+        success: false,
+        message: "No verification code found for this email",
+      });
     }
 
     if (Date.now() > storedData.expiresAt) {
       delete verificationCodes[email];
-      return res.status(400).json({ success: false, message: "Verification code has expired" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Verification code has expired" });
     }
 
     if (storedData.verificationCode !== verificationCode) {
-      return res.status(400).json({ success: false, message: "Invalid verification code" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid verification code" });
     }
 
     delete verificationCodes[email];
@@ -176,7 +202,9 @@ const verifyEmailController = async (req, res) => {
 
     const savedUser = await user.save();
 
-    const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, { expiresIn: "3h" });
+    const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, {
+      expiresIn: "3h",
+    });
 
     const userResponse = savedUser.toObject();
     delete userResponse.password;
@@ -189,7 +217,9 @@ const verifyEmailController = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in verifyController:", error);
-    res.status(500).json({ success: false, message: "Error in verification", error });
+    res
+      .status(500)
+      .json({ success: false, message: "Error in verification", error });
   }
 };
 
@@ -199,16 +229,21 @@ const resendVerificationController = async (req, res) => {
 
     const storedData = verificationCodes[email];
     if (!storedData) {
-      return res.status(400).json({ success: false, message: "No pending verification for this email" });
+      return res.status(400).json({
+        success: false,
+        message: "No pending verification for this email",
+      });
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 3 * 60 * 1000; 
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+    const expiresAt = Date.now() + 3 * 60 * 1000;
 
     verificationCodes[email] = { ...storedData, verificationCode, expiresAt };
 
     const transporter = nodemailer.createTransport({
-      service: 'Gmail',
+      service: "Gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -218,27 +253,33 @@ const resendVerificationController = async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Your New Verification Code',
+      subject: "Your New Verification Code",
       text: `Your new verification code is ${verificationCode}. It will expire in 3 minutes.`,
     };
 
     try {
       await transporter.sendMail(mailOptions);
     } catch (error) {
-      console.error('Error sending verification email:', error);
-      return res.status(500).json({ success: false, message: "Error sending verification email" });
+      console.error("Error sending verification email:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error sending verification email" });
     }
 
     res.status(200).json({
       success: true,
-      message: "New verification code sent to your email. Please verify to complete registration.",
+      message:
+        "New verification code sent to your email. Please verify to complete registration.",
     });
   } catch (error) {
     console.error("Error in resendVerificationController:", error);
-    res.status(500).json({ success: false, message: "Error in resending verification code", error });
+    res.status(500).json({
+      success: false,
+      message: "Error in resending verification code",
+      error,
+    });
   }
 };
-
 
 const loginController = async (req, res) => {
   try {
@@ -378,13 +419,15 @@ const forgotPasswordController = async (req, res) => {
 
   try {
     const user = await userModel.findOne({ email });
-    
+
     if (!user) {
       return res.status(404).send("User not found");
     }
 
     if (!user.isActive) {
-      return res.status(403).send("Account is inactive. Cannot reset password.");
+      return res
+        .status(403)
+        .send("Account is inactive. Cannot reset password.");
     }
 
     const newPassword = generateRandomPassword();
@@ -459,15 +502,9 @@ const checkEmailController = async (req, res) => {
   }
 };
 
-
 const searchByCriteriaController = async (req, res) => {
   try {
-    const {
-      address = "",
-      search = "",
-      categoryName = "",  
-      page = 1,
-    } = req.body;
+    const { city = "", search = "", categoryName = "", page = 1 } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
@@ -477,52 +514,114 @@ const searchByCriteriaController = async (req, res) => {
     };
 
     let categoryIds = [];
+    let skillIds = [];
+
+    const parseSearchString = async (str) => {
+      const words = str.split(/\s+/);
+      let groupedSkills = [];
+      let currentPhrase = [];
+
+      for (let word of words) {
+        currentPhrase.push(word);
+        const currentSkill = currentPhrase.join(" ");
+
+        const skill = await skillModel.findOne({
+          skillName: { $regex: new RegExp(`^${currentSkill}$`, "i") },
+        });
+
+        if (skill) {
+          groupedSkills.push(currentSkill);
+          currentPhrase = [];
+        }
+      }
+
+      return groupedSkills;
+    };
+
     if (categoryName) {
       const categories = await categoryModel.find({
         name: { $regex: new RegExp(categoryName, "i") },
       });
       categoryIds = categories.map((category) => category._id);
+
+      if (categoryIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            companies: [],
+            candidates: [],
+            jobs: [],
+          },
+          pagination: {
+            page,
+            limit,
+            totalResults: 0,
+            totalPages: 0,
+          },
+        });
+      }
     }
+
     if (search) {
       const categories = await categoryModel.find({
         name: { $regex: new RegExp(search, "i") },
       });
       categoryIds = categories.map((category) => category._id);
+
+      const skillNames = await parseSearchString(search);
+
+      const skills = await skillModel.find({
+        skillName: {
+          $in: skillNames.map((name) => new RegExp(`^${name}$`, "i")),
+        },
+      });
+      skillIds = skills.map((skill) => skill._id);
     }
 
-    if (address && !search) {
-      query.address = { $regex: new RegExp(address, "i") };
+    if (city && !search && !categoryName) {
+      query.city = { $regex: new RegExp(city, "i") };
     }
 
-    if (address && search) {
-      query.address = { $regex: new RegExp(address, "i") };
+    if ((city && search) || (city && categoryName)) {
+      query.city = { $regex: new RegExp(city, "i") };
       query.$or = [
         { name: { $regex: new RegExp(search, "i") } },
         { experience: { $regex: new RegExp(search, "i") } },
         { education: { $regex: new RegExp(search, "i") } },
         { gender: { $regex: new RegExp(search, "i") } },
-        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         { title: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
+        { salary: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { interest: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
+        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(skillIds.length > 0 ? [{ skill: { $all: skillIds } }] : []),
+        ...(isNaN(Number(search))
+          ? []
+          : [{ numberOfCruiment: Number(search) }]),
       ];
     }
-    if (!address && search) {
+
+    if (!city && (search || categoryName)) {
       query.$or = [
         { name: { $regex: new RegExp(search, "i") } },
         { experience: { $regex: new RegExp(search, "i") } },
         { education: { $regex: new RegExp(search, "i") } },
         { gender: { $regex: new RegExp(search, "i") } },
-        { skill: { $elemMatch: { $regex: new RegExp(search, "i") } } },
-        { requirements: { $elemMatch: { $regex: new RegExp(search, "i") } } },
         { title: { $regex: new RegExp(search, "i") } },
         { experienceLevel: { $regex: new RegExp(search, "i") } },
         { position: { $regex: new RegExp(search, "i") } },
+        { salary: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { interest: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(isNaN(Number(search)) ? [] : [{ salary: Number(search) }]),
+        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(skillIds.length > 0 ? [{ skill: { $all: skillIds } }] : []),
+        ...(isNaN(Number(search))
+          ? []
+          : [{ numberOfCruiment: Number(search) }]),
       ];
     }
 
@@ -582,57 +681,12 @@ const searchByCriteriaController = async (req, res) => {
   }
 };
 
-
-const googleLoginController = async (req, res) => {
-  try {
-    const { tokenId } = req.body;
-
-    if (!tokenId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Token ID is required" });
-    }
-
-    const ticket = await client.verifyIdToken({
-      idToken: tokenId,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-
-    if (!payload) {
-      return res.status(401).json({ success: false, message: "Invalid Token" });
-    }
-
-    let user = await userModel.findOne({ googleId: payload.sub });
-
-    if (!user) {
-      user = new userModel({
-        googleId: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        lastLogin: Date.now(),
-      });
-      await user.save();
-    }
-
-    const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET, {
-      expiresIn: "3h",
-    });
-
-    res.json({ token, user });
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
-};
-
 const updateUserStatusController = async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
 
-    if (typeof isActive !== 'boolean') {
+    if (typeof isActive !== "boolean") {
       return res.status(400).send({
         success: false,
         message: "Please provide a valid isActive field (true or false)",
@@ -693,10 +747,14 @@ const getUserByIdController = async (req, res) => {
   }
 };
 
+const authGoogle = async (req, res, next) => {
+  console.log("auth gooogle", req.user);
+};
+
+module.exports.authGoogle = authGoogle
 module.exports.verifyEmailController = verifyEmailController;
 module.exports.getUserByIdController = getUserByIdController;
 module.exports.updateUserStatusController = updateUserStatusController;
-module.exports.googleLoginController = googleLoginController;
 module.exports.searchByCriteriaController = searchByCriteriaController;
 module.exports.checkEmailController = checkEmailController;
 module.exports.forgotPasswordController = forgotPasswordController;

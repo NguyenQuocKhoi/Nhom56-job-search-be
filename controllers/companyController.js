@@ -63,7 +63,7 @@ const notificationModel = require("../models/notification");
 const updateCompanyController = async (req, res) => {
   try {
     const { id: userId } = req.params;
-    const { phoneNumber, address, website, name } = req.body;
+    const { phoneNumber, street, city, website, name, description } = req.body;
 
     const user = await userModel.findById(userId).select("email name");
     if (!user) {
@@ -95,10 +95,14 @@ const updateCompanyController = async (req, res) => {
     const pendingUpdates = {
       name: name || user.name,
       phoneNumber: phoneNumber || company.phoneNumber,
-      address: address || company.address,
+      // address: address || company.address,
+      street: street || company.street,
+      city: city || company.city,
       website: website || company.website,
       email: user.email, 
       avatar: avatarUrl || company.avatar, 
+      description: description || company.description,
+      status: undefined,
       lastModified: Date.now(),
     };
 
@@ -401,7 +405,7 @@ const updateCompanyStatusController = async (req, res) => {
 
 const searchCompaniesController = async (req, res) => {
   try {
-    const { address = "", search = "", page = 1 } = req.body;
+    const { city = "", search = "", page = 1 } = req.body;
 
     const limit = 16;
     const skip = (page - 1) * limit;
@@ -410,12 +414,12 @@ const searchCompaniesController = async (req, res) => {
       // status: true,
     };
 
-    if (address && !search) {
-      query.address = { $regex: new RegExp(address, "i") };
+    if (city && !search) {
+      query.city = { $regex: new RegExp(city, "i") };
     }
 
-    if (address && search) {
-      query.address = { $regex: new RegExp(address, "i") };
+    if (city && search) {
+      query.city = { $regex: new RegExp(city, "i") };
       query.$or = [
         { name: { $regex: new RegExp(search, "i") } },
         { email: { $regex: new RegExp(search, "i") } },
@@ -423,7 +427,7 @@ const searchCompaniesController = async (req, res) => {
       ];
     }
 
-    if (!address && search) {
+    if (!city && search) {
       query.$or = [
         { name: { $regex: new RegExp(search, "i") } },
         { email: { $regex: new RegExp(search, "i") } },

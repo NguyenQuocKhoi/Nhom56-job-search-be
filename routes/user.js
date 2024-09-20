@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const passport = require("passport");
+
 const {
   registerController,
   loginController,
@@ -14,13 +15,16 @@ const {
   getUserByIdController,
   verifyEmailController,
   resendVerificationController,
+  googleCallback,
+  loginWithGoogleController,
+  authGoogle,
 } = require("../controllers/userController");
 const {
   verifyToken,
   adminMiddleware,
 } = require("../middlewares/authMiddlewares");
 const user = require("../models/User");
-
+const passportConfig = require("../middlewares/passport")
 router.post("/search",searchByCriteriaController)
 
 router.post("/register", registerController);
@@ -39,11 +43,12 @@ router.post("/check-email", checkEmailController)
 
 router.put("/update/:id", verifyToken, updateUserController);
 
-router.post("/login/google", googleLoginController);
+// router.post("/login/google", loginWithGoogleController);
 
 router.put("/update-status/:id", adminMiddleware, updateUserStatusController);
 
 router.get("/:id", adminMiddleware, getUserByIdController)
 
+router.post("/auth/google", passport.authenticate('google-plus-token'), authGoogle)
 
 module.exports = router;

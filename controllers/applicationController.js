@@ -127,7 +127,9 @@ const updateApplicationStatusController = async (req, res) => {
 
     const candidateEmail = application.candidate.email;
     const companyName = company.name;
-    const workAddress = application.job.address; 
+    const city = application.job.city; 
+    const street = application.job.street; 
+
     const companyEmail = company.email; 
     const subject =
       status === "accepted"
@@ -136,7 +138,7 @@ const updateApplicationStatusController = async (req, res) => {
 
     const text =
       status === "accepted"
-        ? `Dear ${application.candidate.name},\n\nCongratulations! We are pleased to inform you that your application for the position of ${application.job.title} at ${companyName} has been approved. We would like to invite you for an interview at our office located at ${workAddress}.\n\nPlease reply to this email to confirm your availability. We look forward to meeting you.\n\nThank you for your interest in joining our team.\n\nBest regards,\n${companyName}`
+        ? `Dear ${application.candidate.name},\n\nCongratulations! We are pleased to inform you that your application for the position of ${application.job.title} at ${companyName} has been approved. We would like to invite you for an interview at our office located at ${street} ${city}.\n\nPlease reply to this email to confirm your availability. We look forward to meeting you.\n\nThank you for your interest in joining our team.\n\nBest regards,\n${companyName}`
         : `Dear ${application.candidate.name},\n\nThank you for applying for the position of ${application.job.title} at ${companyName}. After careful consideration, we regret to inform you that we will not be moving forward with your application at this time.\n\nWe appreciate the time and effort you invested in your application and encourage you to apply for future openings that match your skills and experience.\n\nThank you again for your interest in ${companyName}.\n\nBest regards,\n${companyName}`;
 
     const transporter = nodemailer.createTransport({
@@ -158,7 +160,7 @@ const updateApplicationStatusController = async (req, res) => {
 
     const notificationMessage =
       status === "accepted"
-      ? `Your application for the position of ${application.job.title} at ${companyName} has been approved! You have been invited for an interview at ${workAddress}.`
+      ? `Your application for the position of ${application.job.title} at ${companyName} has been approved! You have been invited for an interview at ${street} ${city}.`
       : `Your application for the position of ${application.job.title} at ${companyName} has been rejected.`;
 
     const notification = new notificationModel({

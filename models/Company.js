@@ -12,11 +12,16 @@ const companySchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
   },
-  address: {
+  description: {
+    type: String,
+  },
+  street: {
+    type: String,
+  },
+  city: {
     type: String,
   },
   avatar: String,
-
   createdAt: { type: Date, default: new Date() },
   lastModified: { type: Date, default: new Date() },
   website: String,
@@ -29,7 +34,6 @@ const companySchema = new mongoose.Schema({
     type: Object,
     default: null,
   },
- 
 });
 
 module.exports = mongoose.model("Company", companySchema);

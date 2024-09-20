@@ -7,13 +7,15 @@ const jobSchema = new mongoose.Schema({
   description: {
     type: String,
   },
-  requirements: [
-    {
-      type: String,
-    },
-  ],
+  requirementSkills: [{ type: mongoose.Types.ObjectId, ref: "Skill" }],
+  requirements: {
+    type: String,
+  },
+  interest: {
+    type: String,
+  },
   salary: {
-    type: Number,
+    type: String,
   },
   experienceLevel: {
     type: String,
@@ -21,7 +23,10 @@ const jobSchema = new mongoose.Schema({
   position: {
     type: String,
   },
-  address: {
+  street: {
+    type: String,
+  },
+  city: {
     type: String,
   },
   type: {
@@ -43,7 +48,6 @@ const jobSchema = new mongoose.Schema({
   },
   status: {
     type: Boolean,
-    // default: false,
   },
   applications: [
     {
@@ -58,7 +62,6 @@ const jobSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
-
   pendingUpdates: {
     type: Object,
     default: null,

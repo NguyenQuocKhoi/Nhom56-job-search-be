@@ -560,21 +560,38 @@ const updateJobStatusController = async (req, res) => {
         message: "No pending updates found for this job",
       });
     }
-
-    // job.pendingUpdates.status = status;
-    // if (job.pendingUpdates.status === false) {
-    //   job.pendingUpdates = null;
-    // } else {
-    //   Object.assign(job, job.pendingUpdates);
-    //   job.pendingUpdates = null;
-    // }
-
     if (job.pendingUpdates) {
-      if (job.pendingUpdates.status === false) {
+      if (status === false) {
         job.pendingUpdates = null;
       } else {
         Object.assign(job, job.pendingUpdates);
         job.pendingUpdates = null;
+
+        const appliedCandidates = await applicationModel
+          .find({ job: jobId })
+          .select("candidate");
+
+        for (const app of appliedCandidates) {
+          const candidateNotification = new notificationModel({
+            candidate: app.candidate,
+            job: jobId,
+            message: `The job ${job.title} you applied for has changed`,
+          });
+          await candidateNotification.save();
+        }
+
+        const savedCandidates = await saveJobModel
+          .find({ job: jobId })
+          .select("candidate");
+
+        for (const saved of savedCandidates) {
+          const savedNotification = new notificationModel({
+            candidate: saved.candidate,
+            job: jobId,
+            message: `The job ${job.title} you saved for has changed`,
+          });
+          await savedNotification.save();
+        }
       }
     } else {
       job.status = status;
@@ -584,7 +601,7 @@ const updateJobStatusController = async (req, res) => {
     const notificationMessage =
       status === true
         ? `Your ${job.title} job has been approved.`
-        : `Your ${job.title} job has been approved`;
+        : `Your ${job.title} job has been rejected. You can delete this job and create a new one.`;
 
     const notification = new notificationModel({
       job: jobId,
@@ -674,7 +691,9 @@ const searchJobsController = async (req, res) => {
         { interest: { $regex: new RegExp(search, "i") } },
         { type: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(skillIds.length > 0
+          ? [{ requirementSkills: { $all: skillIds } }]
+          : []),
         ...(isNaN(Number(search))
           ? []
           : [{ numberOfCruiment: Number(search) }]),
@@ -694,7 +713,9 @@ const searchJobsController = async (req, res) => {
         { requirements: { $regex: new RegExp(search, "i") } },
         { interest: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(skillIds.length > 0
+          ? [{ requirementSkills: { $all: skillIds } }]
+          : []),
 
         ...(isNaN(Number(search))
           ? []
@@ -770,8 +791,8 @@ const checkCandidateWithAllJobsSkillsController = async (req, res) => {
           title: job.title,
           description: job.description,
           requirementSkills: job.requirementSkills,
-          requirements : job.requirements,
-          interest : job.interest,
+          requirements: job.requirements,
+          interest: job.interest,
           salary: job.salary,
           experienceLevel: job.experienceLevel,
           position: job.position,

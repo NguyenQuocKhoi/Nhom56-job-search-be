@@ -9,9 +9,11 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const nodemailer = require("nodemailer");
+const session = require("express-session");
 const { OAuth2Client } = require("google-auth-library");
 const GooglePlusTokenStrategy = require("passport-google-plus-token");
 const passport = require("passport");
+const mongoose = require("mongoose")
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 dotenv.config();
 
@@ -747,11 +749,227 @@ const getUserByIdController = async (req, res) => {
   }
 };
 
-const authGoogle = async (req, res, next) => {
-  console.log("auth gooogle", req.user);
+// const authGoogle = async (req, res, next) => {
+//   console.log("auth gooogle", req.user);
+// };
+
+const loginWithGoogleController = (req, res, next) => {
+  passport.authenticate('google-plus-token', { session: false }, async (err, user) => {
+    if (err || !user) {
+      return res.status(400).json({
+        success: false,
+        message: "Google login failed",
+      });
+    }
+
+    const token = jwt.sign({ _id: user._id, role: user.role }, process.env.TOKEN_SECRET, {
+      expiresIn: "3h",
+    });
+
+    const userWithoutPassword = await userModel.findById(user._id).select("-password");
+
+    return res.json({
+      success: true,
+      token,
+      user: userWithoutPassword,
+    });
+  })(req, res, next);
 };
 
-module.exports.authGoogle = authGoogle
+const registerCandidateByAdminController = async (req, res) => {
+  try {
+    const { name, email, password, role, phoneNumber, city, street, gender, dateOfBirth, skill, experience, education, moreInformation } = req.body;
+
+    const nameValidationResult = validateName(name);
+    const emailValidationResult = validateEmail(email);
+    const passwordValidationResult = validatePassword(password);
+
+    if (!nameValidationResult.success) {
+      return res.status(400).json({ error: nameValidationResult.message });
+    }
+
+    if (!emailValidationResult.success) {
+      return res.status(400).json({ error: emailValidationResult.message });
+    }
+
+    if (!passwordValidationResult.success) {
+      return res.status(400).json({ error: passwordValidationResult.message });
+    }
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide all required fields",
+      });
+    }
+
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(409).send({
+        success: false,
+        message: "This email has already been created",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+
+    const user = new userModel({
+      name,
+      password: hashPassword,
+      email,
+      role,
+    });
+
+    const savedUser = await user.save();
+
+    let candidate = await candidateModel.findById(savedUser._id).select("-__v");
+
+    if (!candidate) {
+      candidate = new candidateModel({
+        _id: savedUser._id,
+        name,
+        email,
+      });
+    }
+
+    candidate.phoneNumber = phoneNumber;
+    candidate.street = street;
+    candidate.city = city;
+    candidate.gender = gender || candidate.gender;
+    candidate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : candidate.dateOfBirth;
+
+    if (Array.isArray(skill)) {
+      candidate.skill = skill.map((id) => {
+        return mongoose.Types.ObjectId.isValid(id)
+          ? new mongoose.Types.ObjectId(id)
+          : id;
+      });
+    }
+
+    candidate.experience = experience;
+    candidate.education = education;
+    candidate.moreInformation = moreInformation;
+    candidate.lastModified = Date.now();
+    candidate.email = email;
+
+    await candidate.save();
+    await candidate.populate("skill", "skillName");
+
+    const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, {
+      expiresIn: "3h",
+    });
+
+    const userResponse = savedUser.toObject();
+    delete userResponse.password;
+
+    res.header("auth-token", token).json({
+      token: token,
+      user: userResponse,
+      candidate: candidate,
+      message: "User and candidate registered successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Register Candidate by Admin API",
+      error,
+    });
+  }
+};
+
+const registerCompanyByAdminController = async (req, res) => {
+  try {
+    const { name, email, password, role, phoneNumber, address, website, description } = req.body;
+
+    const nameValidationResult = validateName(name);
+    const emailValidationResult = validateEmail(email);
+    const passwordValidationResult = validatePassword(password);
+
+    if (!nameValidationResult.success) {
+      return res.status(400).json({ error: nameValidationResult.message });
+    }
+
+    if (!emailValidationResult.success) {
+      return res.status(400).json({ error: emailValidationResult.message });
+    }
+
+    if (!passwordValidationResult.success) {
+      return res.status(400).json({ error: passwordValidationResult.message });
+    }
+
+    if (!name || !email || !password || !role || !phoneNumber || !address || !website) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide all required fields",
+      });
+    }
+
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(409).send({
+        success: false,
+        message: "This email has already been created",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+
+    const user = new userModel({
+      name,
+      password: hashPassword,
+      email,
+      role,
+    });
+
+    const savedUser = await user.save();
+    const token = jwt.sign({ _id: savedUser._id }, process.env.TOKEN_SECRET, {
+      expiresIn: "3h",
+    });
+
+    let company = await companyModel.findById(savedUser._id).select("-__v");
+
+    if (!company) {
+      company = new companyModel({
+        _id: savedUser._id,
+        email: user.email,
+      });
+    }
+
+    company.name = name; 
+    company.phoneNumber = phoneNumber;
+    company.address = address;
+    company.website = website;
+    company.status = true;
+    company.description = description;
+    company.lastModified = Date.now();
+
+    await company.save();
+
+    const userResponse = savedUser.toObject();
+    delete userResponse.password;
+
+    res.header("auth-token", token).json({
+      token: token,
+      user: userResponse,
+      company: company,
+      message: "Company registered successfully by admin",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Register Company by Admin API",
+      error,
+    });
+  }
+};
+
+module.exports.registerCompanyByAdminController = registerCompanyByAdminController;
+module.exports.registerCandidateByAdminController = registerCandidateByAdminController;
+module.exports.loginWithGoogleController = loginWithGoogleController
 module.exports.verifyEmailController = verifyEmailController;
 module.exports.getUserByIdController = getUserByIdController;
 module.exports.updateUserStatusController = updateUserStatusController;

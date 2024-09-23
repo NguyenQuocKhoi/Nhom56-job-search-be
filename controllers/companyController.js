@@ -78,17 +78,17 @@ const updateCompanyController = async (req, res) => {
       company = new companyModel({
         _id: userId,
         email: user.email,
-        name: user.name
+        name: user.name,
       });
     }
 
     let avatarUrl;
     const file = req.file;
     if (file) {
-      const fileUri = getDataUri(file); 
-      const cloudResponse = await cloudinary.uploader.upload(fileUri.content); 
+      const fileUri = getDataUri(file);
+      const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
       if (cloudResponse) {
-        avatarUrl = cloudResponse.secure_url; 
+        avatarUrl = cloudResponse.secure_url;
       }
     }
 
@@ -99,8 +99,8 @@ const updateCompanyController = async (req, res) => {
       street: street || company.street,
       city: city || company.city,
       website: website || company.website,
-      email: user.email, 
-      avatar: avatarUrl || company.avatar, 
+      email: user.email,
+      avatar: avatarUrl || company.avatar,
       description: description || company.description,
       status: undefined,
       lastModified: Date.now(),
@@ -355,7 +355,7 @@ const updateCompanyStatusController = async (req, res) => {
 
     const user = await userModel.findById(companyId);
     // console.log(user);
-    
+
     const company = await companyModel.findById(companyId);
     if (!company) {
       return res.status(404).send({
@@ -364,16 +364,14 @@ const updateCompanyStatusController = async (req, res) => {
       });
     }
 
-
     company.pendingUpdates.status = status;
-    if (company.pendingUpdates.status === false) {
+    if (status === false) {
       company.pendingUpdates = null;
     } else {
       Object.assign(company, company.pendingUpdates);
-      user.name =  company.pendingUpdates.name;
+      user.name = company.pendingUpdates.name;
       await user.save();
       company.pendingUpdates = null;
-      
     }
     // company.status = status;
     // company.lastModified = Date.now();

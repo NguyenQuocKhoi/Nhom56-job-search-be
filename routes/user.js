@@ -18,6 +18,8 @@ const {
   googleCallback,
   loginWithGoogleController,
   authGoogle,
+  registerCandidateByAdminController,
+  registerCompanyByAdminController,
 } = require("../controllers/userController");
 const {
   verifyToken,
@@ -49,6 +51,10 @@ router.put("/update-status/:id", adminMiddleware, updateUserStatusController);
 
 router.get("/:id", adminMiddleware, getUserByIdController)
 
-router.post("/auth/google", passport.authenticate('google-plus-token'), authGoogle)
+router.post("/create-candidate", adminMiddleware, registerCandidateByAdminController);
+
+router.post("/create-company", adminMiddleware, registerCompanyByAdminController);
+
+router.post("/auth/google", passport.authenticate('google-plus-token'), loginWithGoogleController)
 
 module.exports = router;

@@ -10,7 +10,7 @@ router.post("/get-job", getJobsByCategoryNameController);
 
 router.post("/create", adminMiddleware, createCategoryController);
 
-router.get("/get-all", verifyToken, getAllCategoriesController);
+router.get("/get-all", getAllCategoriesController);
 
 router.get("/:categoryId", getCategoryByIdController);
 

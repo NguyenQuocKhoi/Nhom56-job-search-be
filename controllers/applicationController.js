@@ -3,7 +3,9 @@ const jobModel = require("../models/Job");
 const companyModel = require("../models/Company")
 const applicationModel = require("../models/Application");
 const notificationModel = require("../models/notification");
+const { getDataUri } = require("../utils");
 const nodemailer = require("nodemailer");
+const cloudinary = require("cloudinary");
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -65,6 +67,81 @@ const submitApplicationController = async (req, res) => {
     });
   }
 };
+
+const submitNewApplicationController = async (req, res) => {
+  try {
+    const { candidateId, jobId } = req.body;
+
+    const candidate = await candidateModel.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).send({
+        success: false,
+        message: "Candidate not found",
+      });
+    }
+    console.log(candidate);
+    
+
+    const job = await jobModel.findById(jobId).select("title applications");
+    if (!job) {
+      return res.status(404).send({
+        success: false,
+        message: "Job not found",
+      });
+    }
+    console.log(job);
+
+    let existingApplication = await applicationModel.findOne({
+      candidate: candidateId,
+      job: jobId,
+    });
+    if (existingApplication) {
+      return res.status(400).send({
+        success: false,
+        message: "Application already exists for this job",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).send({
+        success: false,
+        message: "Resume file is required",
+      });
+    }
+
+    const file = req.file;
+    const fileUri = getDataUri(file);
+
+    const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
+
+    let application = new applicationModel({
+      candidate: candidateId,
+      job: jobId,
+      resume: cloudResponse.secure_url,
+    });
+
+    await application.save();
+
+    job.applications.push(application._id);
+    await job.save();
+
+    application = await application.populate("candidate");
+
+    return res.status(200).send({
+      success: true,
+      message: "Application submitted successfully",
+      application: application,
+    });
+  } catch (error) {
+    console.error("Error submitting application:", error);
+    return res.status(500).send({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 
 const getApplicationByIdController = async (req, res) => {
   try {
@@ -370,7 +447,7 @@ const getApplicationByCandidateAndJobController = async (req, res) => {
   }
 };
 
-
+module.exports.submitNewApplicationController = submitNewApplicationController;
 module.exports.getApplicationByCandidateAndJobController = getApplicationByCandidateAndJobController;
 module.exports.getApplyByJobIdController = getApplyByJobIdController
 module.exports.getAllApplicationController = getAllApplicationController

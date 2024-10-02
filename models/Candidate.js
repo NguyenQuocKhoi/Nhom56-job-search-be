@@ -11,10 +11,6 @@ const candidateSchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
   },
-  // address: {
-  //   type: String,
-  // },
-  // address: addressSchema,
   street: {
     type: String,
   },
@@ -26,11 +22,6 @@ const candidateSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: new Date() },
   lastModified: { type: Date, default: new Date() },
-  // skill: [
-  //   {
-  //     type: String,
-  //   },
-  // ],
   resume: String,
   resumeOriginalName: { type: String },
   experience: {
@@ -51,6 +42,9 @@ const candidateSchema = new mongoose.Schema({
   autoSearchJobs: {
     type: Boolean,
     default: false,
+  },
+  lastStatus: {
+    type: Boolean,
   },
 });
 

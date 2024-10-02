@@ -34,6 +34,10 @@ const companySchema = new mongoose.Schema({
     type: Object,
     default: null,
   },
+
+  lastStatus:{
+    type:Boolean
+  }
 });
 
 module.exports = mongoose.model("Company", companySchema);

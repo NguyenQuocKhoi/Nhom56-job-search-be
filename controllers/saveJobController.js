@@ -90,13 +90,19 @@ const createSaveJobController = async (req, res) => {
   
       const savedJobs = await saveJobModel
         .find({ candidate: candidateId })
+        .populate({
+          path: 'job',
+          match: { status: true }, 
+        })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(Number(limit));
   
+      const filteredSavedJobs = savedJobs.filter((savedJob) => savedJob.job);
+  
       const totalSaveJobs = await saveJobModel.countDocuments({ candidate: candidateId });
   
-      if (!savedJobs || savedJobs.length === 0) {
+      if (!filteredSavedJobs || filteredSavedJobs.length === 0) {
         return res.status(404).send({
           success: false,
           message: "No jobs",
@@ -105,9 +111,8 @@ const createSaveJobController = async (req, res) => {
   
       res.status(200).send({
         success: true,
-        message: "Save Jobs fetched successfully",
+        message: "Saved jobs fetched successfully",
         savedJobs,
-        totalSaveJobs,
         totalPages: Math.ceil(totalSaveJobs / limit),
         currentPage: Number(page),
       });
@@ -120,6 +125,8 @@ const createSaveJobController = async (req, res) => {
       });
     }
   };
+
+ 
 
 module.exports.getSaveJobsByCandidateIdController = getSaveJobsByCandidateIdController;
 module.exports.deleteSaveJobController = deleteSaveJobController

@@ -595,6 +595,7 @@ const updateJobStatusController = async (req, res) => {
       }
     } else {
       job.status = status;
+      job.lastStatus = status;
     }
 
     await job.save();
@@ -826,22 +827,87 @@ const checkCandidateWithAllJobsSkillsController = async (req, res) => {
   }
 };
 
-module.exports.checkCandidateWithAllJobsSkillsController =
-  checkCandidateWithAllJobsSkillsController;
+const getSimilarJobController = async (req, res) => {
+  try {
+    const { jobId } = req.body;
+    const job = await jobModel.findById(jobId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "job not found",
+      });
+    }
+
+    const jobSkill = job.requirementSkills || [];
+    const jobs = await jobModel.find({ status: true });
+    const matchingJobs = [];
+
+    for (let job of jobs) {
+      if (!Array.isArray(job.requirementSkills)) {
+        continue;
+      }
+
+      const jobSkills = job.requirementSkills;
+
+      const matchingSkills = jobSkill.filter((skillId) =>
+        jobSkills.includes(skillId)
+      );
+
+      if (matchingSkills.length > 0) {
+        matchingJobs.push({
+          jobId: job._id,
+          companyId: job.company,
+          title: job.title,
+          description: job.description,
+          requirementSkills: job.requirementSkills,
+          requirements: job.requirements,
+          interest: job.interest,
+          salary: job.salary,
+          experienceLevel: job.experienceLevel,
+          position: job.position,
+          street: job.street,
+          city: job.city,
+          type: job.type,
+          numberOfCruiment: job.numberOfCruiment,
+          expiredAt: job.expiredAt,
+          category: job.category,
+        });
+      }
+    }
+
+    if (matchingJobs.length > 0) {
+      return res.status(200).json({
+        success: true,
+        matchingJobs,
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: "No jobs with matching skills found",
+      });
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+module.exports.getSimilarJobController = getSimilarJobController;
+module.exports.checkCandidateWithAllJobsSkillsController = checkCandidateWithAllJobsSkillsController;
 module.exports.searchJobsController = searchJobsController;
 module.exports.getAllJobsPendingController = getAllJobsPendingController;
 module.exports.getAllJobsReJectedController = getAllJobsReJectedController;
-module.exports.getJobsFalseByCompanyIdController =
-  getJobsFalseByCompanyIdController;
-module.exports.getJobsNotStatusByCompanyIdController =
-  getJobsNotStatusByCompanyIdController;
+module.exports.getJobsFalseByCompanyIdController = getJobsFalseByCompanyIdController;
+module.exports.getJobsNotStatusByCompanyIdController = getJobsNotStatusByCompanyIdController;
 module.exports.getAllJobsStatusTrueController = getAllJobsStatusTrueController;
 module.exports.updateJobStatusController = updateJobStatusController;
 module.exports.deleteJobController = deleteJobController;
 module.exports.updateJobController = updateJobController;
 module.exports.getJobByIdController = getJobByIdController;
 module.exports.getJobsByCompanyIdController = getJobsByCompanyIdController;
-module.exports.getJobsTrueByCompanyIdController =
-  getJobsTrueByCompanyIdController;
+module.exports.getJobsTrueByCompanyIdController = getJobsTrueByCompanyIdController;
 module.exports.getAllJobsController = getAllJobsController;
 module.exports.createJobController = createJobController;

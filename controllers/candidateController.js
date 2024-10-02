@@ -231,6 +231,7 @@ const updateCandidateStatusController = async (req, res) => {
     }
 
     candidate.status = status;
+    candidate.lastStatus = status;
     candidate.lastModified = Date.now();
     await candidate.save();
 
@@ -570,6 +571,70 @@ const checkAndAutoApplyJobs = async (req, res) => {
   }
 };
 
+const disableCandidateController = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isActive } = req.body;
+
+    if (!userId) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide user ID",
+      });
+    }
+
+    const candidate = await candidateModel.findById(userId);
+    if (!candidate) {
+      return res.status(404).send({
+        success: false,
+        message: "Candidate not found",
+      });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (isActive === false) {
+      user.isActive = isActive;
+      user.lastModified = Date.now();
+      await user.save();
+      candidate.status = false;
+      candidate.autoSearchJobs = false,
+      candidate.lastModified = Date.now();
+      await candidate.save();
+    }
+
+    if (isActive === true) {
+      user.isActive = isActive;
+      user.lastModified = Date.now();
+      await user.save();
+      candidate.status = candidate.lastStatus;
+      candidate.lastModified = Date.now();
+      await candidate.save();
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Candidate updated successfully",
+      candidate,
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while updating the candidate",
+      error,
+    });
+  }
+};
+
+module.exports.disableCandidateController = disableCandidateController;
 module.exports.checkAndAutoApplyJobs = checkAndAutoApplyJobs;
 module.exports.toggleAutoSearchJobsForCandidate =
   toggleAutoSearchJobsForCandidate;

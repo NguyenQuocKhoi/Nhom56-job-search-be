@@ -3,7 +3,7 @@ const multer = require("multer");
 const upload = multer();
 const router = express.Router();
 const {verifyToken, companyMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { updateCompanyController, updateAvatarController, getCompanyByIdController, getAllCompaniesController, updateCompanyStatusController, getAllCompaniesTrueController, getAllCompaniesRejectedController, getAllCompaniesPendingController, searchCompaniesController } = require("../controllers/companyController");
+const { updateCompanyController, updateAvatarController, getCompanyByIdController, getAllCompaniesController, updateCompanyStatusController, getAllCompaniesTrueController, getAllCompaniesRejectedController, getAllCompaniesPendingController, searchCompaniesController, disableCompanyController } = require("../controllers/companyController");
 
 
 const uploadAvatar = multer({
@@ -27,5 +27,7 @@ router.put("/update/:id", companyMiddleware, uploadAvatar, updateCompanyControll
 router.put("/upload-avatar/:id", companyMiddleware, upload.single("avatar"), updateAvatarController)
 
 router.put("/update-status", adminMiddleware, updateCompanyStatusController)
+
+router.put("/disable-company/:companyId", adminMiddleware, disableCompanyController);
 
 module.exports = router;

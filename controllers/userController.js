@@ -13,7 +13,7 @@ const session = require("express-session");
 const { OAuth2Client } = require("google-auth-library");
 const GooglePlusTokenStrategy = require("passport-google-plus-token");
 const passport = require("passport");
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 dotenv.config();
 
@@ -432,40 +432,45 @@ const forgotPasswordController = async (req, res) => {
         .send("Account is inactive. Cannot reset password.");
     }
 
-    const newPassword = generateRandomPassword();
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
+    if (user.isActive === true) {
+      const newPassword = generateRandomPassword();
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      user.password = hashedPassword;
+      await user.save();
 
-    const emailContent = `
-      Hello ${user.name}, 
+      const emailContent = `
+        Hello ${user.name}, 
+  
+        Your password has been reset. Your new password is: ${newPassword}
+  
+        Please change your password after logging in.
+  
+        Thanks,
+        ${process.env.EMAIL_NAME}
+      `;
 
-      Your password has been reset. Your new password is: ${newPassword}
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
 
-      Please change your password after logging in.
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Your New Password",
+        text: emailContent,
+      };
 
-      Thanks,
-      ${process.env.EMAIL_NAME}
-    `;
+      await transporter.sendMail(mailOptions);
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "Your New Password",
-      text: emailContent,
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    res.status(200).send("New password sent to your email");
+      res.status(200).send("New password sent to your email");
+    }
+    else{
+      res.status(201).send("Your account has been disabled ");
+    }
   } catch (error) {
     console.error("Error in forgot password:", error);
     res.status(500).send("Server error");
@@ -598,7 +603,9 @@ const searchByCriteriaController = async (req, res) => {
         { requirements: { $regex: new RegExp(search, "i") } },
         { interest: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(skillIds.length > 0
+          ? [{ requirementSkills: { $all: skillIds } }]
+          : []),
         ...(skillIds.length > 0 ? [{ skill: { $all: skillIds } }] : []),
         ...(isNaN(Number(search))
           ? []
@@ -619,7 +626,9 @@ const searchByCriteriaController = async (req, res) => {
         { requirements: { $regex: new RegExp(search, "i") } },
         { interest: { $regex: new RegExp(search, "i") } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
-        ...(skillIds.length > 0 ? [{ requirementSkills: { $all: skillIds } }] : []),
+        ...(skillIds.length > 0
+          ? [{ requirementSkills: { $all: skillIds } }]
+          : []),
         ...(skillIds.length > 0 ? [{ skill: { $all: skillIds } }] : []),
         ...(isNaN(Number(search))
           ? []
@@ -754,31 +763,55 @@ const getUserByIdController = async (req, res) => {
 // };
 
 const loginWithGoogleController = (req, res, next) => {
-  passport.authenticate('google-plus-token', { session: false }, async (err, user) => {
-    if (err || !user) {
-      return res.status(400).json({
-        success: false,
-        message: "Google login failed",
+  passport.authenticate(
+    "google-plus-token",
+    { session: false },
+    async (err, user) => {
+      if (err || !user) {
+        return res.status(400).json({
+          success: false,
+          message: "Google login failed",
+        });
+      }
+
+      const token = jwt.sign(
+        { _id: user._id, role: user.role },
+        process.env.TOKEN_SECRET,
+        {
+          expiresIn: "3h",
+        }
+      );
+
+      const userWithoutPassword = await userModel
+        .findById(user._id)
+        .select("-password");
+
+      return res.json({
+        success: true,
+        token,
+        user: userWithoutPassword,
       });
     }
-
-    const token = jwt.sign({ _id: user._id, role: user.role }, process.env.TOKEN_SECRET, {
-      expiresIn: "3h",
-    });
-
-    const userWithoutPassword = await userModel.findById(user._id).select("-password");
-
-    return res.json({
-      success: true,
-      token,
-      user: userWithoutPassword,
-    });
-  })(req, res, next);
+  )(req, res, next);
 };
 
 const registerCandidateByAdminController = async (req, res) => {
   try {
-    const { name, email, password, role, phoneNumber, city, street, gender, dateOfBirth, skill, experience, education, moreInformation } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      phoneNumber,
+      city,
+      street,
+      gender,
+      dateOfBirth,
+      skill,
+      experience,
+      education,
+      moreInformation,
+    } = req.body;
 
     const nameValidationResult = validateName(name);
     const emailValidationResult = validateEmail(email);
@@ -837,7 +870,9 @@ const registerCandidateByAdminController = async (req, res) => {
     candidate.street = street;
     candidate.city = city;
     candidate.gender = gender || candidate.gender;
-    candidate.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : candidate.dateOfBirth;
+    candidate.dateOfBirth = dateOfBirth
+      ? new Date(dateOfBirth)
+      : candidate.dateOfBirth;
 
     if (Array.isArray(skill)) {
       candidate.skill = skill.map((id) => {
@@ -881,7 +916,17 @@ const registerCandidateByAdminController = async (req, res) => {
 
 const registerCompanyByAdminController = async (req, res) => {
   try {
-    const { name, email, password, role, phoneNumber, address, website, description } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      phoneNumber,
+      city,
+      street,
+      website,
+      description,
+    } = req.body;
 
     const nameValidationResult = validateName(name);
     const emailValidationResult = validateEmail(email);
@@ -899,7 +944,16 @@ const registerCompanyByAdminController = async (req, res) => {
       return res.status(400).json({ error: passwordValidationResult.message });
     }
 
-    if (!name || !email || !password || !role || !phoneNumber || !address || !website) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !role ||
+      !phoneNumber ||
+      !city||
+      !street||
+      !website
+    ) {
       return res.status(400).send({
         success: false,
         message: "Please provide all required fields",
@@ -938,9 +992,10 @@ const registerCompanyByAdminController = async (req, res) => {
       });
     }
 
-    company.name = name; 
+    company.name = name;
     company.phoneNumber = phoneNumber;
-    company.address = address;
+    company.city = city;
+    company.street = street;
     company.website = website;
     company.status = true;
     company.description = description;
@@ -967,9 +1022,11 @@ const registerCompanyByAdminController = async (req, res) => {
   }
 };
 
-module.exports.registerCompanyByAdminController = registerCompanyByAdminController;
-module.exports.registerCandidateByAdminController = registerCandidateByAdminController;
-module.exports.loginWithGoogleController = loginWithGoogleController
+module.exports.registerCompanyByAdminController =
+  registerCompanyByAdminController;
+module.exports.registerCandidateByAdminController =
+  registerCandidateByAdminController;
+module.exports.loginWithGoogleController = loginWithGoogleController;
 module.exports.verifyEmailController = verifyEmailController;
 module.exports.getUserByIdController = getUserByIdController;
 module.exports.updateUserStatusController = updateUserStatusController;

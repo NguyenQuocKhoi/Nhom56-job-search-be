@@ -1,5 +1,6 @@
 const userModel = require("../models/User");
 const companyModel = require("../models/Company");
+const jobModel = require("../models/Job")
 const { getDataUri } = require("../utils");
 const cloudinary = require("cloudinary");
 const notificationModel = require("../models/notification");
@@ -373,7 +374,8 @@ const updateCompanyStatusController = async (req, res) => {
       await user.save();
       company.pendingUpdates = null;
     }
-    // company.status = status;
+    company.status = status;
+    company.lastStatus = status;
     // company.lastModified = Date.now();
     await company.save();
 
@@ -462,11 +464,86 @@ const searchCompaniesController = async (req, res) => {
   }
 };
 
+const disableCompanyController = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { isActive } = req.body;
+
+    if (!companyId) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide company ID",
+      });
+    }
+
+    const user = await userModel.findById(companyId);
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        message: "user not found",
+      });
+    }
+
+    const company = await companyModel.findById(companyId);
+    if (!company) {
+      return res.status(404).send({
+        success: false,
+        message: "company not found",
+      });
+    }
+
+    if (isActive === false) {
+      user.isActive = false;
+      user.lastModified = Date.now();
+      await user.save();
+
+      (company.status = false), (company.lastModified = Date.now());
+      await company.save();
+
+      await jobModel.updateMany(
+        { company: companyId },
+        { $set: { status: false, lastModified: Date.now() } }
+      );
+    }
+
+    if (isActive === true) {
+      user.isActive = true;
+      user.lastModified = Date.now();
+      await user.save();
+
+      (company.status = company.lastStatus),
+        (company.lastModified = Date.now());
+      await company.save();
+
+      const jobs = await jobModel.find({ company: companyId });
+
+      for (const job of jobs) {
+        job.status = job.lastStatus;  
+        job.lastModified = Date.now();
+        await job.save();
+      }
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Company updated successfully",
+      company,
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while updating the company",
+      error,
+    });
+  }
+};
+
+module.exports.disableCompanyController = disableCompanyController;
 module.exports.searchCompaniesController = searchCompaniesController;
-module.exports.getAllCompaniesPendingController =
-  getAllCompaniesPendingController;
-module.exports.getAllCompaniesRejectedController =
-  getAllCompaniesRejectedController;
+module.exports.getAllCompaniesPendingController = getAllCompaniesPendingController;
+module.exports.getAllCompaniesRejectedController = getAllCompaniesRejectedController;
 module.exports.updateCompanyStatusController = updateCompanyStatusController;
 module.exports.getAllCompaniesController = getAllCompaniesController;
 module.exports.getAllCompaniesTrueController = getAllCompaniesTrueController;

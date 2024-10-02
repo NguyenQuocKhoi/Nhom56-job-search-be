@@ -3,7 +3,8 @@ const multer = require("multer");
 const upload = multer();
 const router = express.Router();
 const {verifyToken, candidateMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { updateCandidateController, updateAvatarController, getCandidateByIdController, uploadCVController, updateCandidateStatusController, getAllCandidatesController, searchCandidatesController, toggleAutoSearchJobsForCandidate, checkAndAutoApplyJobs } = require("../controllers/candidateController");
+const { updateCandidateController, updateAvatarController, getCandidateByIdController, uploadCVController, updateCandidateStatusController, getAllCandidatesController, searchCandidatesController, toggleAutoSearchJobsForCandidate, checkAndAutoApplyJobs, disableCandidateController } = require("../controllers/candidateController");
+const { disableCompanyController } = require("../controllers/companyController");
 
 const uploadAvatar = multer({
     limits: { fileSize: 5 * 1024 * 1024 }, 
@@ -32,7 +33,9 @@ router.put("/upload-cv/:id", verifyToken, uploadCV, uploadCVController);
 
 router.put("/update-status", candidateMiddleware, updateCandidateStatusController);
 
-router.put("/auto-apply", candidateMiddleware, toggleAutoSearchJobsForCandidate)
+router.put("/auto-apply", candidateMiddleware, toggleAutoSearchJobsForCandidate);
+
+router.put("/disable-candidate/:userId", adminMiddleware, disableCandidateController);
 
 
 module.exports = router;

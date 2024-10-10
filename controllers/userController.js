@@ -423,7 +423,10 @@ const forgotPasswordController = async (req, res) => {
     const user = await userModel.findOne({ email });
 
     if (!user) {
-      return res.status(404).send("User not found");
+      return res.status(404).send({
+        success: false,
+        message: "user not found",
+      });
     }
 
     if (!user.isActive) {
@@ -490,7 +493,7 @@ const checkEmailController = async (req, res) => {
 
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(404).send({
+      return res.status(201).send({
         success: false,
         message: "Email not found",
       });

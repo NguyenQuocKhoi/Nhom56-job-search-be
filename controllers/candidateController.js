@@ -94,11 +94,18 @@ const uploadCVController = async (req, res) => {
     if (!candidate) {
       return res.status(404).send({
         success: false,
-        message: "candidate not found",
+        message: "Candidate not found",
       });
     }
+
     const file = req.file;
     const fileUri = getDataUri(file);
+
+    if (candidate.resume) {
+      const oldPublicId = candidate.resume.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(oldPublicId);
+    }
+
     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
 
     if (cloudResponse) {
@@ -111,7 +118,7 @@ const uploadCVController = async (req, res) => {
 
     res.status(200).send({
       success: true,
-      message: "Candidate upload cv successfully",
+      message: "Candidate uploaded CV successfully",
       candidate: candidate,
     });
   } catch (error) {
@@ -145,6 +152,10 @@ const updateAvatarController = async (req, res) => {
 
     const file = req.file;
     const fileUri = getDataUri(file);
+    if (candidate.avatar) {
+      const oldPublicId = candidate.avatar.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(oldPublicId);
+    }
     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
 
     if (cloudResponse) {
@@ -604,8 +615,7 @@ const disableCandidateController = async (req, res) => {
       user.lastModified = Date.now();
       await user.save();
       candidate.status = false;
-      candidate.autoSearchJobs = false,
-      candidate.lastModified = Date.now();
+      (candidate.autoSearchJobs = false), (candidate.lastModified = Date.now());
       await candidate.save();
     }
 
@@ -634,14 +644,73 @@ const disableCandidateController = async (req, res) => {
   }
 };
 
+const checkAndDeleteCandidateCV = async (req, res) => {
+  try {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const inactiveUsers = await userModel.find({
+      lastLogin: { $lt: threeMonthsAgo },
+    });
+
+    const deletedCandidates = [];
+
+    for (const user of inactiveUsers) {
+      const candidate = await candidateModel.findById(user._id);
+
+      if (candidate && candidate.resume) {
+        const applications = await applicationModel.find({
+          candidateId: candidate._id,
+        });
+
+        if (applications.length === 0) {
+          const publicId = candidate.resume.split("/").pop().split(".")[0];
+
+          await cloudinary.uploader.destroy(publicId);
+
+          candidate.autoSearchJobs = false;
+          candidate.resumeOriginalName = undefined;
+          candidate.resume = undefined;
+          await candidate.save();
+
+          deletedCandidates.push({
+            candidate: candidate._id,
+            user: user._id,
+          });
+          // console.log(`CV of candidate with ID ${candidate._id} has been deleted.`);
+        }
+      }
+    }
+
+    if (deletedCandidates.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "No candidates found for CV deletion.",
+      });
+    }
+
+    return res.status(200).send({
+      success: true,
+      message: "CVs of inactive candidates have been deleted successfully.",
+      data: deletedCandidates,
+    });
+  } catch (error) {
+    console.error("Error in deleting candidate CV:", error);
+    return res.status(500).send({
+      success: false,
+      message: "An error occurred while deleting candidate CVs.",
+      error: error.message,
+    });
+  }
+};
+
+module.exports.checkAndDeleteCandidateCV = checkAndDeleteCandidateCV;
 module.exports.disableCandidateController = disableCandidateController;
 module.exports.checkAndAutoApplyJobs = checkAndAutoApplyJobs;
-module.exports.toggleAutoSearchJobsForCandidate =
-  toggleAutoSearchJobsForCandidate;
+module.exports.toggleAutoSearchJobsForCandidate = toggleAutoSearchJobsForCandidate;
 module.exports.searchCandidatesController = searchCandidatesController;
 module.exports.getAllCandidatesController = getAllCandidatesController;
-module.exports.updateCandidateStatusController =
-  updateCandidateStatusController;
+module.exports.updateCandidateStatusController = updateCandidateStatusController;
 module.exports.uploadCVController = uploadCVController;
 module.exports.getCandidateByIdController = getCandidateByIdController;
 module.exports.updateCandidateController = updateCandidateController;

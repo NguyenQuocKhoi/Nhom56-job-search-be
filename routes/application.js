@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const {verifyToken, candidateMiddleware, companyMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { submitApplicationController, getApplicationByIdController, updateApplicationStatusController, getApplyByCanididateIdController, getAllApplicationController, getApplyByJobIdController, getApplicationByCandidateAndJobController, submitNewApplicationController } = require("../controllers/applicationController");
+const { submitApplicationController, getApplicationByIdController, updateApplicationStatusController, getApplyByCanididateIdController, getAllApplicationController, getApplyByJobIdController, getApplicationByCandidateAndJobController, submitNewApplicationController, countPendingApplicationsByJobIdController } = require("../controllers/applicationController");
 
 
 const uploadCV = multer({
@@ -25,5 +25,7 @@ router.get("/get-applications-by-job/:jobId", verifyToken, getApplyByJobIdContro
 router.get("/", adminMiddleware, getAllApplicationController);
 
 router.get("/get-apply", verifyToken, getApplicationByCandidateAndJobController);
+
+router.get("/countPending/:jobId", companyMiddleware, countPendingApplicationsByJobIdController);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const multer = require("multer");
 const upload = multer();
 const router = express.Router();
 const {verifyToken, candidateMiddleware, adminMiddleware, } = require("../middlewares/authMiddlewares");
-const { updateCandidateController, updateAvatarController, getCandidateByIdController, uploadCVController, updateCandidateStatusController, getAllCandidatesController, searchCandidatesController, toggleAutoSearchJobsForCandidate, checkAndAutoApplyJobs, disableCandidateController } = require("../controllers/candidateController");
+const { updateCandidateController, updateAvatarController, getCandidateByIdController, uploadCVController, updateCandidateStatusController, getAllCandidatesController, searchCandidatesController, toggleAutoSearchJobsForCandidate, checkAndAutoApplyJobs, disableCandidateController, checkAndDeleteCandidateCV } = require("../controllers/candidateController");
 const { disableCompanyController } = require("../controllers/companyController");
 
 const uploadAvatar = multer({
@@ -15,13 +15,15 @@ const uploadCV = multer({
   }).single("resume");
     
 
+router.get("/check-and-delete-cv", checkAndDeleteCandidateCV)
+
 router.post('/check-and-auto-apply-jobs', candidateMiddleware, checkAndAutoApplyJobs);
 
 router.post("/search", searchCandidatesController);
 
 router.get("/get-all", adminMiddleware, getAllCandidatesController);
 
-router.put("/update/:id", verifyToken,updateCandidateController)
+router.put("/update/:id", candidateMiddleware, updateCandidateController)
 
 router.put("/upload-avatar/:id", verifyToken, uploadAvatar, updateAvatarController)
 
@@ -29,7 +31,7 @@ router.get("/:id", verifyToken, getCandidateByIdController)
 
 // router.put("/upload-cv/:id", verifyToken, upload.single("resume"), uploadCVController);
 
-router.put("/upload-cv/:id", verifyToken, uploadCV, uploadCVController);
+router.put("/upload-cv/:id", candidateMiddleware, uploadCV, uploadCVController);
 
 router.put("/update-status", candidateMiddleware, updateCandidateStatusController);
 

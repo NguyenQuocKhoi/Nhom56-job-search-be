@@ -517,6 +517,13 @@ const updateJobController = async (req, res) => {
   }
 };
 
+const extractPublicIdFromUrl = (url) => {
+  const parts = url.split('/');
+  const fileName = parts[parts.length - 1];
+  const publicId = fileName.split('.')[0]; 
+  return publicId;
+};
+
 const deleteJobController = async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -527,6 +534,14 @@ const deleteJobController = async (req, res) => {
         success: false,
         message: "Job not found",
       });
+    }
+
+    const applications = await applicationModel.find({ job: jobId });
+    for (const application of applications) {
+      if (application.resume) {  
+        const publicId = extractPublicIdFromUrl(application.resume); 
+        await cloudinary.uploader.destroy(publicId); 
+      }
     }
 
     await applicationModel.deleteMany({ job: jobId });
@@ -830,6 +845,9 @@ const checkCandidateWithAllJobsSkillsController = async (req, res) => {
 const getSimilarJobController = async (req, res) => {
   try {
     const { jobId } = req.body;
+    const page = parseInt(req.query.page) || 1;  
+    const limit = 10;  
+
     const job = await jobModel.findById(jobId);
     if (!job) {
       return res.status(404).json({
@@ -848,7 +866,6 @@ const getSimilarJobController = async (req, res) => {
       }
 
       const jobSkills = job.requirementSkills;
-
       const matchingSkills = jobSkill.filter((skillId) =>
         jobSkills.includes(skillId)
       );
@@ -875,17 +892,19 @@ const getSimilarJobController = async (req, res) => {
       }
     }
 
-    if (matchingJobs.length > 0) {
-      return res.status(200).json({
-        success: true,
-        matchingJobs,
-      });
-    } else {
-      return res.status(200).json({
-        success: true,
-        message: "No jobs with matching skills found",
-      });
-    }
+    const total = matchingJobs.length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+
+    const paginatedJobs = matchingJobs.slice(startIndex, endIndex);
+
+    return res.status(200).json({
+      success: true,
+      total,  
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      matchingJobs: paginatedJobs,
+    });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({
@@ -894,6 +913,7 @@ const getSimilarJobController = async (req, res) => {
     });
   }
 };
+
 
 module.exports.getSimilarJobController = getSimilarJobController;
 module.exports.checkCandidateWithAllJobsSkillsController = checkCandidateWithAllJobsSkillsController;

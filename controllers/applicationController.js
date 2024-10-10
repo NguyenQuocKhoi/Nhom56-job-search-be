@@ -392,13 +392,6 @@ const getApplyByJobIdController = async (req, res) => {
 
     const totalApplications = await applicationModel.countDocuments({ job: jobId });
 
-    // if (!applications || applications.length === 0) {
-    //   return res.status(404).send({
-    //     success: false,
-    //     message: "No apply found for this job",
-    //   });
-    // }
-
     res.status(200).send({
       success: true,
       message: "Applications fetched successfully",
@@ -447,6 +440,29 @@ const getApplicationByCandidateAndJobController = async (req, res) => {
   }
 };
 
+const countPendingApplicationsByJobIdController = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const totalPendingApplications = await applicationModel.countDocuments({ job: jobId, status: 'pending' });
+
+    res.status(200).send({
+      success: true,
+      message: "Total pending applications count fetched successfully",
+      totalPendingApplications,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in count pending applications by job ID API",
+      error,
+    });
+  }
+};
+
+
+module.exports.countPendingApplicationsByJobIdController = countPendingApplicationsByJobIdController;
 module.exports.submitNewApplicationController = submitNewApplicationController;
 module.exports.getApplicationByCandidateAndJobController = getApplicationByCandidateAndJobController;
 module.exports.getApplyByJobIdController = getApplyByJobIdController

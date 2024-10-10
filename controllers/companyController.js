@@ -343,6 +343,66 @@ const getAllCompaniesPendingController = async (req, res) => {
   }
 };
 
+// const updateCompanyStatusController = async (req, res) => {
+//   try {
+//     const { companyId, status } = req.body;
+
+//     if (!companyId) {
+//       return res.status(400).send({
+//         success: false,
+//         message: "Please provide company ID",
+//       });
+//     }
+
+//     const user = await userModel.findById(companyId);
+//     // console.log(user);
+
+//     const company = await companyModel.findById(companyId);
+//     if (!company) {
+//       return res.status(404).send({
+//         success: false,
+//         message: "Company not found",
+//       });
+//     }
+
+//     company.pendingUpdates.status = status;
+//     if (status === false) {
+//       company.pendingUpdates = null;
+//     } else {
+//       Object.assign(company, company.pendingUpdates);
+//       user.name = company.pendingUpdates.name;
+//       await user.save();
+//       company.pendingUpdates = null;
+//     }
+//     company.status = status;
+//     company.lastStatus = status;
+//     // company.lastModified = Date.now();
+//     await company.save();
+
+//     const notificationMessage =
+//       status === true
+//         ? `The company ${company.name} has been successfully approved.`
+//         : `The company ${company.name} has not been approved.`;
+
+//     const notification = new notificationModel({
+//       company: companyId,
+//       message: notificationMessage,
+//     });
+
+//     await notification.save();
+//     return res.status(200).send({
+//       success: true,
+//       message: `Company status updated to ${status}. ${notificationMessage}`,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).send({
+//       success: false,
+//       message: "An error occurred while updating the company status.",
+//     });
+//   }
+// };
+
 const updateCompanyStatusController = async (req, res) => {
   try {
     const { companyId, status } = req.body;
@@ -355,8 +415,6 @@ const updateCompanyStatusController = async (req, res) => {
     }
 
     const user = await userModel.findById(companyId);
-    // console.log(user);
-
     const company = await companyModel.findById(companyId);
     if (!company) {
       return res.status(404).send({
@@ -365,19 +423,30 @@ const updateCompanyStatusController = async (req, res) => {
       });
     }
 
-    company.pendingUpdates.status = status;
-    if (status === false) {
+    if (status === true) {
+      if (company.pendingUpdates && company.pendingUpdates.avatar) {
+        if (company.avatar) {
+          const oldPublicId = company.avatar.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(oldPublicId);
+        }
+
+        company.avatar = company.pendingUpdates.avatar;
+        user.name = company.pendingUpdates.name;
+      }
+      Object.assign(company, company.pendingUpdates);
       company.pendingUpdates = null;
     } else {
-      Object.assign(company, company.pendingUpdates);
-      user.name = company.pendingUpdates.name;
-      await user.save();
+      if (company.pendingUpdates && company.pendingUpdates.avatar) {
+        const newPublicId = company.pendingUpdates.avatar.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(newPublicId);
+      }
       company.pendingUpdates = null;
     }
+
     company.status = status;
     company.lastStatus = status;
-    // company.lastModified = Date.now();
     await company.save();
+    await user.save();
 
     const notificationMessage =
       status === true
@@ -390,6 +459,7 @@ const updateCompanyStatusController = async (req, res) => {
     });
 
     await notification.save();
+
     return res.status(200).send({
       success: true,
       message: `Company status updated to ${status}. ${notificationMessage}`,

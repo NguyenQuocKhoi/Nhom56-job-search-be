@@ -481,6 +481,67 @@ const searchCompaniesController = async (req, res) => {
     const skip = (page - 1) * limit;
 
     let query = {
+      status: true,
+    };
+
+    if (city && !search) {
+      query.city = { $regex: new RegExp(city, "i") };
+    }
+
+    if (city && search) {
+      query.city = { $regex: new RegExp(city, "i") };
+      query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { email: { $regex: new RegExp(search, "i") } },
+        { phoneNumber: { $regex: new RegExp(search, "i") } },
+      ];
+    }
+
+    if (!city && search) {
+      query.$or = [
+        { name: { $regex: new RegExp(search, "i") } },
+        { email: { $regex: new RegExp(search, "i") } },
+        { phoneNumber: { $regex: new RegExp(search, "i") } },
+      ];
+    }
+
+    const sort = { createdAt: 1 };
+
+    const companyResults = await companyModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const totalCompanyResults = await companyModel.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      companies: companyResults,
+      pagination: {
+        page,
+        limit,
+        totalResults: totalCompanyResults,
+        totalPages: Math.ceil(totalCompanyResults / limit),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const searchCompaniesByAdminController = async (req, res) => {
+  try {
+    const { city = "", search = "", page = 1 } = req.body;
+
+    const limit = 16;
+    const skip = (page - 1) * limit;
+
+    let query = {
       // status: true,
     };
 
@@ -610,6 +671,7 @@ const disableCompanyController = async (req, res) => {
   }
 };
 
+module.exports.searchCompaniesByAdminController = searchCompaniesByAdminController;
 module.exports.disableCompanyController = disableCompanyController;
 module.exports.searchCompaniesController = searchCompaniesController;
 module.exports.getAllCompaniesPendingController = getAllCompaniesPendingController;

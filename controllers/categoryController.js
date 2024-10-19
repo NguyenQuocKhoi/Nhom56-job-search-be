@@ -245,6 +245,40 @@ const checkCategoryController = async (req, res) => {
   }
 };
 
+const getCategoryByCategoryNameController = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).send({
+        success: false,
+        message: "Please provide a Category name",
+      });
+    }
+
+    const category = await categoryModel.find({ name: { $regex: name, $options: "i" } });
+    if (category.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Category name not found",
+      });
+    }
+
+    res.status(200).send({
+      success: true,
+      message: "Category name found",
+      data: category, 
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in checking Category name API",
+    });
+  }
+};
+
+module.exports.getCategoryByCategoryNameController = getCategoryByCategoryNameController;
 module.exports.checkCategoryController = checkCategoryController;
 module.exports.getJobsByCategoryNameController = getJobsByCategoryNameController
 module.exports.getJobsByCategoryIdController = getJobsByCategoryIdController;

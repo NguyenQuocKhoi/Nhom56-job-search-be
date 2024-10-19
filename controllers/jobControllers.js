@@ -299,7 +299,7 @@ const getJobsTrueByCompanyIdController = async (req, res) => {
     });
 
     if (!jobs || jobs.length === 0) {
-      return res.status(404).send({
+      return res.status(204).send({
         success: false,
         message: "No jobs found for this company",
       });
@@ -341,7 +341,7 @@ const getJobsFalseByCompanyIdController = async (req, res) => {
     });
 
     if (!jobs || jobs.length === 0) {
-      return res.status(404).send({
+      return res.status(204).send({
         success: false,
         message: "No jobs found for this company",
       });
@@ -383,7 +383,7 @@ const getJobsNotStatusByCompanyIdController = async (req, res) => {
     });
 
     if (!jobs || jobs.length === 0) {
-      return res.status(404).send({
+      return res.status(204).send({
         success: false,
         message: "No jobs found for this company",
       });
@@ -649,7 +649,143 @@ const searchJobsController = async (req, res) => {
     const limit = 16;
     const skip = (page - 1) * limit;
 
-    let query = {};
+    let query = {
+      status: true,
+    };
+
+    let categoryIds = [];
+    let skillIds = [];
+
+    const parseSearchString = async (str) => {
+      const words = str.split(/\s+/);
+      let groupedSkills = [];
+      let currentPhrase = [];
+
+      for (let word of words) {
+        currentPhrase.push(word);
+        const currentSkill = currentPhrase.join(" ");
+
+        const skill = await skillModel.findOne({
+          skillName: { $regex: new RegExp(`^${currentSkill}$`, "i") },
+        });
+
+        if (skill) {
+          groupedSkills.push(currentSkill);
+          currentPhrase = [];
+        }
+      }
+
+      return groupedSkills;
+    };
+
+    if (search) {
+      const categories = await categoryModel.find({
+        name: { $regex: new RegExp(search, "i") },
+      });
+      categoryIds = categories.map((category) => category._id);
+      const skillNames = await parseSearchString(search);
+
+      const skills = await skillModel.find({
+        skillName: {
+          $in: skillNames.map((name) => new RegExp(`^${name}$`, "i")),
+        },
+      });
+      skillIds = skills.map((skill) => skill._id);
+    }
+
+    if (city && !search) {
+      query.city = { $regex: new RegExp(city, "i") };
+    }
+
+    if (city && search) {
+      query.city = { $regex: new RegExp(city, "i") };
+      const searchQuery = [
+        { title: { $regex: new RegExp(search, "i") } },
+        { description: { $regex: new RegExp(search, "i") } },
+        { experienceLevel: { $regex: new RegExp(search, "i") } },
+        { position: { $regex: new RegExp(search, "i") } },
+        { salary: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { interest: { $regex: new RegExp(search, "i") } },
+        { type: { $regex: new RegExp(search, "i") } },
+        ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
+        ...(skillIds.length > 0
+          ? [{ requirementSkills: { $all: skillIds } }]
+          : []),
+        ...(isNaN(Number(search))
+          ? []
+          : [{ numberOfCruiment: Number(search) }]),
+      ];
+
+      query.$or = searchQuery;
+    }
+
+    if (!city && search) {
+      const searchQuery = [
+        { title: { $regex: new RegExp(search, "i") } },
+        { description: { $regex: new RegExp(search, "i") } },
+        { experienceLevel: { $regex: new RegExp(search, "i") } },
+        { position: { $regex: new RegExp(search, "i") } },
+        { type: { $regex: new RegExp(search, "i") } },
+        { salary: { $regex: new RegExp(search, "i") } },
+        { requirements: { $regex: new RegExp(search, "i") } },
+        { interest: { $regex: new RegExp(search, "i") } },
+        ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : []),
+        ...(skillIds.length > 0
+          ? [{ requirementSkills: { $all: skillIds } }]
+          : []),
+
+        ...(isNaN(Number(search))
+          ? []
+          : [{ numberOfCruiment: Number(search) }]),
+      ];
+
+      query.$or = searchQuery;
+    }
+
+    if (categoryIds.length > 0) {
+      query.category = { $in: categoryIds };
+    }
+
+    const sort = { createdAt: 1 };
+
+    const jobResults = await jobModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit);
+
+    const totalJobResults = await jobModel.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      jobs: jobResults,
+      pagination: {
+        page,
+        limit,
+        totalResults: totalJobResults,
+        totalPages: Math.ceil(totalJobResults / limit),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const searchJobsByAdminController = async (req, res) => {
+  try {
+    const { city = "", search = "", page = 1 } = req.body;
+
+    const limit = 16;
+    const skip = (page - 1) * limit;
+
+    let query = {
+      
+    };
 
     let categoryIds = [];
     let skillIds = [];
@@ -914,7 +1050,7 @@ const getSimilarJobController = async (req, res) => {
   }
 };
 
-
+module.exports.searchJobsByAdminController = searchJobsByAdminController;
 module.exports.getSimilarJobController = getSimilarJobController;
 module.exports.checkCandidateWithAllJobsSkillsController = checkCandidateWithAllJobsSkillsController;
 module.exports.searchJobsController = searchJobsController;

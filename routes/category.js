@@ -1,12 +1,14 @@
 const express = require('express');
 const { adminMiddleware, verifyToken } = require('../middlewares/authMiddlewares');
-const { createCategoryController, getAllCategoriesController, getCategoryByIdController, updateCategoryController, getJobsByCategoryIdController, getJobsByCategoryNameController, checkCategoryController } = require('../controllers/categoryController');
+const { createCategoryController, getAllCategoriesController, getCategoryByIdController, updateCategoryController, getJobsByCategoryIdController, getJobsByCategoryNameController, checkCategoryController, getCategoryByCategoryNameController } = require('../controllers/categoryController');
 
 const router = express.Router();
 
 router.get("/get-job/:categoryId", getJobsByCategoryIdController);
 
 router.post("/get-job", getJobsByCategoryNameController);
+
+router.post("/get-category-by-name", adminMiddleware, getCategoryByCategoryNameController);
 
 router.post("/create", adminMiddleware, createCategoryController);
 

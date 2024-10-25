@@ -87,6 +87,50 @@ const updateCandidateController = async (req, res) => {
   }
 };
 
+// const uploadCVController = async (req, res) => {
+//   try {
+//     const candidateId = req.params.id;
+//     const candidate = await candidateModel.findById(candidateId);
+//     if (!candidate) {
+//       return res.status(404).send({
+//         success: false,
+//         message: "Candidate not found",
+//       });
+//     }
+
+//     const file = req.file;
+//     const fileUri = getDataUri(file);
+
+//     if (candidate.resume) {
+//       const oldPublicId = candidate.resume.split("/").pop().split(".")[0];
+//       await cloudinary.uploader.destroy(oldPublicId);
+//     }
+
+//     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
+
+//     if (cloudResponse) {
+//       candidate.resume = cloudResponse.secure_url;
+//       candidate.resumeOriginalName = file.originalname;
+//     }
+
+//     candidate.lastModified = Date.now();
+//     await candidate.save();
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Candidate uploaded CV successfully",
+//       candidate: candidate,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in Upload CV API",
+//       error,
+//     });
+//   }
+// };
+
 const uploadCVController = async (req, res) => {
   try {
     const candidateId = req.params.id;
@@ -99,6 +143,13 @@ const uploadCVController = async (req, res) => {
     }
 
     const file = req.file;
+    if (!file) {
+      return res.status(400).send({
+        success: false,
+        message: "No file uploaded or file too large",
+      });
+    }
+
     const fileUri = getDataUri(file);
 
     if (candidate.resume) {
@@ -122,6 +173,12 @@ const uploadCVController = async (req, res) => {
       candidate: candidate,
     });
   } catch (error) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send({
+        success: false,
+        message: "File size exceeds 2MB limit",
+      });
+    }
     console.log(error);
     res.status(500).send({
       success: false,
@@ -130,6 +187,55 @@ const uploadCVController = async (req, res) => {
     });
   }
 };
+
+// const updateAvatarController = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     const user = await userModel.findById(userId).select("name");
+//     if (!user) {
+//       return res.status(404).send({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     let candidate = await candidateModel.findById(userId).select("-__v");
+//     if (!candidate) {
+//       candidate = new candidateModel({
+//         _id: userId,
+//         name: user.name,
+//       });
+//     }
+
+//     const file = req.file;
+//     const fileUri = getDataUri(file);
+//     if (candidate.avatar) {
+//       const oldPublicId = candidate.avatar.split("/").pop().split(".")[0];
+//       await cloudinary.uploader.destroy(oldPublicId);
+//     }
+//     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
+
+//     if (cloudResponse) {
+//       candidate.avatar = cloudResponse.secure_url;
+//     }
+
+//     candidate.lastModified = Date.now();
+//     await candidate.save();
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Candidate updated successfully",
+//       candidate: candidate,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in Update Avatar Candidate API",
+//       error,
+//     });
+//   }
+// };
 
 const updateAvatarController = async (req, res) => {
   try {
@@ -151,11 +257,19 @@ const updateAvatarController = async (req, res) => {
     }
 
     const file = req.file;
+    if (!file) {
+      return res.status(400).send({
+        success: false,
+        message: "No file uploaded or file too large",
+      });
+    }
+
     const fileUri = getDataUri(file);
     if (candidate.avatar) {
       const oldPublicId = candidate.avatar.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(oldPublicId);
     }
+
     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
 
     if (cloudResponse) {
@@ -171,6 +285,12 @@ const updateAvatarController = async (req, res) => {
       candidate: candidate,
     });
   } catch (error) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send({
+        success: false,
+        message: "File size exceeds 2MB limit",
+      });
+    }
     console.log(error);
     res.status(500).send({
       success: false,
@@ -704,6 +824,51 @@ const checkAndDeleteCandidateCV = async (req, res) => {
   }
 };
 
+const deleteCVController = async (req, res) => {
+  try {
+    const candidateId = req.params.id;
+    const candidate = await candidateModel.findById(candidateId);
+    if (!candidate) {
+      return res.status(404).send({
+        success: false,
+        message: "Candidate not found",
+      });
+    }
+
+    if (candidate.resume) {
+      const publicId = candidate.resume.split("/").pop().split(".")[0];
+      
+      await cloudinary.uploader.destroy(publicId);
+      
+      candidate.resume = undefined;
+      candidate.resumeOriginalName = undefined;
+      candidate.autoSearchJobs = false,
+      candidate.status = false
+      candidate.lastStatus = false,
+      candidate.lastModified = Date.now();
+      await candidate.save();
+
+      return res.status(200).send({
+        success: true,
+        message: "CV deleted successfully",
+      });
+    } else {
+      return res.status(400).send({
+        success: false,
+        message: "No CV found to delete",
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({
+      success: false,
+      message: "Error in Delete CV API",
+      error,
+    });
+  }
+};
+
+module.exports.deleteCVController = deleteCVController;
 module.exports.checkAndDeleteCandidateCV = checkAndDeleteCandidateCV;
 module.exports.disableCandidateController = disableCandidateController;
 module.exports.checkAndAutoApplyJobs = checkAndAutoApplyJobs;

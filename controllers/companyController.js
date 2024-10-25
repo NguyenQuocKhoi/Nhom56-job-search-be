@@ -5,62 +5,6 @@ const { getDataUri } = require("../utils");
 const cloudinary = require("cloudinary");
 const notificationModel = require("../models/notification");
 
-// const updateCompanyController = async (req, res) => {
-//   try {
-//     const userId = req.params.id;
-//     const user = await userModel.findById(userId).select("email");
-//     if (!user) {
-//       return res.status(404).send({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     let company = await companyModel.findById(userId).select("-__v");
-
-//     if (!company) {
-//       company = new companyModel({
-//         _id: userId,
-//         // name: user.name,
-//         email: user.email,
-//       });
-//     }
-//     const { phoneNumber, address, website, name } = req.body;
-
-//     if (!phoneNumber || !address || !website) {
-//       return res.status(400).send({
-//         success: false,
-//         message: "Please provide all required fields",
-//       });
-//     }
-//     company.name = name;
-//     company.phoneNumber = phoneNumber;
-//     company.address = address;
-//     company.website = website;
-//     company.email = user.email;
-//     company.status = undefined;
-//     // company.status = false;
-//     company.lastModified = Date.now();
-
-//     // user.name = company.name;
-//     // await user.save();
-//     await company.save();
-
-//     res.status(200).send({
-//       success: true,
-//       message: "company updated successfully",
-//       company: company,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).send({
-//       success: false,
-//       message: "Error in Update company API",
-//       error,
-//     });
-//   }
-// };
-
 const updateCompanyController = async (req, res) => {
   try {
     const { id: userId } = req.params;
@@ -116,6 +60,12 @@ const updateCompanyController = async (req, res) => {
       company,
     });
   } catch (error) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send({
+        success: false,
+        message: "File size exceeds 2MB limit",
+      });
+    }
     console.log(error);
     res.status(500).send({
       success: false,

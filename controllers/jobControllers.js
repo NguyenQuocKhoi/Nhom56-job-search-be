@@ -242,15 +242,55 @@ const getAllJobsPendingController = async (req, res) => {
   }
 };
 
+// const getJobsByCompanyIdController = async (req, res) => {
+//   try {
+//     const { companyId } = req.params;
+//     const { page = 1, limit = 6 } = req.query;
+
+//     const jobs = await jobModel
+//       .find({ company: companyId })
+//       .populate("company")
+//       .sort({ status: -1 })
+//       .skip((page - 1) * limit)
+//       .limit(Number(limit));
+
+//     const totalJobs = await jobModel.countDocuments({ company: companyId });
+
+//     if (!jobs || jobs.length === 0) {
+//       return res.status(404).send({
+//         success: false,
+//         message: "No jobs found for this company",
+//       });
+//     }
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Jobs fetched successfully",
+//       jobs,
+//       totalJobs,
+//       totalPages: Math.ceil(totalJobs / limit),
+//       currentPage: Number(page),
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in get jobs by company ID API",
+//       error,
+//     });
+//   }
+// };
+
 const getJobsByCompanyIdController = async (req, res) => {
   try {
     const { companyId } = req.params;
-    const { page = 1, limit = 6 } = req.query;
+    const { page = 1, limit = 6, sort = 'asc' } = req.body;
+    const sortOption = sort === 'asc' ? { createdAt: 1 } : { createdAt: -1 };
 
     const jobs = await jobModel
       .find({ company: companyId })
       .populate("company")
-      .sort({ status: -1 })
+      .sort(sortOption)
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -281,15 +321,59 @@ const getJobsByCompanyIdController = async (req, res) => {
   }
 };
 
+
+// const getJobsTrueByCompanyIdController = async (req, res) => {
+//   try {
+//     const { companyId } = req.params;
+//     const { page = 1, limit = 6 } = req.query;
+
+//     const jobs = await jobModel
+//       .find({ company: companyId, status: true })
+//       .populate("company")
+//       .sort({ createdAt: -1 })
+//       .skip((page - 1) * limit)
+//       .limit(Number(limit));
+
+//     const totalJobs = await jobModel.countDocuments({
+//       company: companyId,
+//       status: true,
+//     });
+
+//     if (!jobs || jobs.length === 0) {
+//       return res.status(204).send({
+//         success: false,
+//         message: "No jobs found for this company",
+//       });
+//     }
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Jobs fetched successfully",
+//       jobs,
+//       totalJobs,
+//       totalPages: Math.ceil(totalJobs / limit),
+//       currentPage: Number(page),
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in get jobs by company ID API",
+//       error,
+//     });
+//   }
+// };
+
 const getJobsTrueByCompanyIdController = async (req, res) => {
   try {
     const { companyId } = req.params;
-    const { page = 1, limit = 6 } = req.query;
+    const { page = 1, limit = 6, sort = 'asc' } = req.body;
+    const sortOption = sort === 'asc' ? { createdAt: 1 } : { createdAt: -1 };
 
     const jobs = await jobModel
       .find({ company: companyId, status: true })
       .populate("company")
-      .sort({ createdAt: -1 })
+      .sort(sortOption)
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -323,15 +407,58 @@ const getJobsTrueByCompanyIdController = async (req, res) => {
   }
 };
 
+// const getJobsFalseByCompanyIdController = async (req, res) => {
+//   try {
+//     const { companyId } = req.params;
+//     const { page = 1, limit = 6 } = req.query;
+
+//     const jobs = await jobModel
+//       .find({ company: companyId, status: false })
+//       .populate("company")
+//       .sort({ createdAt: -1 })
+//       .skip((page - 1) * limit)
+//       .limit(Number(limit));
+
+//     const totalJobs = await jobModel.countDocuments({
+//       company: companyId,
+//       status: false,
+//     });
+
+//     if (!jobs || jobs.length === 0) {
+//       return res.status(204).send({
+//         success: false,
+//         message: "No jobs found for this company",
+//       });
+//     }
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Jobs fetched successfully",
+//       jobs,
+//       totalJobs,
+//       totalPages: Math.ceil(totalJobs / limit),
+//       currentPage: Number(page),
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in get jobs by company ID API",
+//       error,
+//     });
+//   }
+// };
+
 const getJobsFalseByCompanyIdController = async (req, res) => {
   try {
     const { companyId } = req.params;
-    const { page = 1, limit = 6 } = req.query;
+    const { page = 1, limit = 6, sort = 'asc' } = req.body;
+    const sortOption = sort === 'asc' ? { createdAt: 1 } : { createdAt: -1 };
 
     const jobs = await jobModel
       .find({ company: companyId, status: false })
       .populate("company")
-      .sort({ createdAt: -1 })
+      .sort(sortOption) 
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -365,16 +492,62 @@ const getJobsFalseByCompanyIdController = async (req, res) => {
   }
 };
 
+// const getJobsNotStatusByCompanyIdController = async (req, res) => {
+//   try {
+//     const { companyId } = req.params;
+//     const { page = 1, limit = 6 } = req.query;
+
+//     const jobs = await jobModel
+//       .find({ company: companyId, status: undefined })
+//       .populate("company")
+//       .sort({ createdAt: -1 })
+//       .skip((page - 1) * limit)
+//       .limit(Number(limit));
+
+//     const totalJobs = await jobModel.countDocuments({
+//       company: companyId,
+//       status: undefined,
+//     });
+
+//     if (!jobs || jobs.length === 0) {
+//       return res.status(204).send({
+//         success: false,
+//         message: "No jobs found for this company",
+//       });
+//     }
+
+//     res.status(200).send({
+//       success: true,
+//       message: "Jobs fetched successfully",
+//       jobs,
+//       totalJobs,
+//       totalPages: Math.ceil(totalJobs / limit),
+//       currentPage: Number(page),
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send({
+//       success: false,
+//       message: "Error in get jobs by company ID API",
+//       error,
+//     });
+//   }
+// };
+
+
 const getJobsNotStatusByCompanyIdController = async (req, res) => {
   try {
     const { companyId } = req.params;
-    const { page = 1, limit = 6 } = req.query;
+    const { page = 1, limit = 6, sort = 'asc' } = req.body;
+    const skip = (page - 1) * limit;
+
+    const sortOption = sort === 'asc' ? { createdAt: 1 } : { createdAt: -1 };
 
     const jobs = await jobModel
       .find({ company: companyId, status: undefined })
       .populate("company")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
+      .sort(sortOption) 
+      .skip(skip)
       .limit(Number(limit));
 
     const totalJobs = await jobModel.countDocuments({
@@ -382,27 +555,22 @@ const getJobsNotStatusByCompanyIdController = async (req, res) => {
       status: undefined,
     });
 
-    if (!jobs || jobs.length === 0) {
-      return res.status(204).send({
-        success: false,
-        message: "No jobs found for this company",
-      });
-    }
-
     res.status(200).send({
       success: true,
       message: "Jobs fetched successfully",
-      jobs,
-      totalJobs,
-      totalPages: Math.ceil(totalJobs / limit),
-      currentPage: Number(page),
+      data: {
+        jobs,
+        totalPages: Math.ceil(totalJobs / limit),
+        currentPage: Number(page),
+        totalJobs,
+      },
     });
   } catch (error) {
     console.log(error);
     res.status(500).send({
       success: false,
       message: "Error in get jobs by company ID API",
-      error,
+      error: error.message,
     });
   }
 };

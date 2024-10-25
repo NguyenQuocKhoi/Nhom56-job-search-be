@@ -7,7 +7,7 @@ const { updateCompanyController, updateAvatarController, getCompanyByIdControlle
 
 
 const uploadAvatar = multer({
-    limits: { fileSize: 5 * 1024 * 1024 }, 
+    limits: { fileSize: 2 * 1024 * 1024 }, 
   }).single("avatar");
 
 router.get("/get-all-companies-rejected", adminMiddleware, getAllCompaniesRejectedController);
@@ -22,7 +22,25 @@ router.post("/search", searchCompaniesController);
 
 router.get("/:id", getCompanyByIdController)
 
-router.put("/update/:id", companyMiddleware, uploadAvatar, updateCompanyController)
+// router.put("/update/:id", companyMiddleware, uploadAvatar, updateCompanyController)
+
+router.put("/update/:id", companyMiddleware, (req, res, next) => {
+  uploadAvatar(req, res, function (err) {
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send({
+        success: false,
+        message: "File size exceeds 2MB limit",
+      });
+    } else if (err) {
+      return res.status(500).send({
+        success: false,
+        message: "File upload error",
+        error: err,
+      });
+    }
+    next();
+  });
+}, updateCompanyController);
 
 router.put("/upload-avatar/:id", companyMiddleware, upload.single("avatar"), updateAvatarController)
 

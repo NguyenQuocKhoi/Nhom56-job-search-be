@@ -23,13 +23,13 @@ router.get("/get-all-job", getAllJobsStatusTrueController);
 
 router.get('/get-all', getAllJobsController)
 
-router.get("/get-job/:companyId", getJobsByCompanyIdController)
+router.post("/get-job/:companyId", getJobsByCompanyIdController)
 
-router.get("/get-jobs/:companyId", getJobsTrueByCompanyIdController);
+router.post("/get-jobs/:companyId", getJobsTrueByCompanyIdController);
 
-router.get("/get-jobs-rejected/:companyId", getJobsFalseByCompanyIdController);
+router.post("/get-jobs-rejected/:companyId", getJobsFalseByCompanyIdController);
 
-router.get("/get-jobs-pending/:companyId", getJobsNotStatusByCompanyIdController);
+router.post("/get-jobs-pending/:companyId", getJobsNotStatusByCompanyIdController);
 
 router.get("/:jobId", getJobByIdController);
 
@@ -38,6 +38,5 @@ router.put("/update/:jobId", companyMiddleware, updateJobController);
 router.delete("/delete/:jobId", companyMiddleware, deleteJobController);
 
 router.put("/update-status", adminMiddleware, updateJobStatusController);
-
 
 module.exports = router;

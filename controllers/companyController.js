@@ -1,6 +1,6 @@
 const userModel = require("../models/User");
 const companyModel = require("../models/Company");
-const jobModel = require("../models/Job")
+const jobModel = require("../models/Job");
 const { getDataUri } = require("../utils");
 const cloudinary = require("cloudinary");
 const notificationModel = require("../models/notification");
@@ -376,25 +376,34 @@ const updateCompanyStatusController = async (req, res) => {
     if (status === true) {
       if (company.pendingUpdates && company.pendingUpdates.avatar) {
         if (company.avatar) {
-          const oldPublicId = company.avatar.split('/').pop().split('.')[0];
+          const oldPublicId = company.avatar.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(oldPublicId);
         }
 
         company.avatar = company.pendingUpdates.avatar;
         user.name = company.pendingUpdates.name;
+        company.status = status;
+        company.lastStatus = status;
       }
       Object.assign(company, company.pendingUpdates);
       company.pendingUpdates = null;
     } else {
       if (company.pendingUpdates && company.pendingUpdates.avatar) {
-        const newPublicId = company.pendingUpdates.avatar.split('/').pop().split('.')[0];
+        const newPublicId = company.pendingUpdates.avatar
+          .split("/")
+          .pop()
+          .split(".")[0];
         await cloudinary.uploader.destroy(newPublicId);
+      }
+      if (company.status) {
+        company.pendingUpdates = null;
+      } else {
+        company.status = status;
+        company.lastStatus = status;
       }
       company.pendingUpdates = null;
     }
 
-    company.status = status;
-    company.lastStatus = status;
     await company.save();
     await user.save();
 
@@ -599,7 +608,7 @@ const disableCompanyController = async (req, res) => {
       const jobs = await jobModel.find({ company: companyId });
 
       for (const job of jobs) {
-        job.status = job.lastStatus;  
+        job.status = job.lastStatus;
         job.lastModified = Date.now();
         await job.save();
       }
@@ -621,11 +630,14 @@ const disableCompanyController = async (req, res) => {
   }
 };
 
-module.exports.searchCompaniesByAdminController = searchCompaniesByAdminController;
+module.exports.searchCompaniesByAdminController =
+  searchCompaniesByAdminController;
 module.exports.disableCompanyController = disableCompanyController;
 module.exports.searchCompaniesController = searchCompaniesController;
-module.exports.getAllCompaniesPendingController = getAllCompaniesPendingController;
-module.exports.getAllCompaniesRejectedController = getAllCompaniesRejectedController;
+module.exports.getAllCompaniesPendingController =
+  getAllCompaniesPendingController;
+module.exports.getAllCompaniesRejectedController =
+  getAllCompaniesRejectedController;
 module.exports.updateCompanyStatusController = updateCompanyStatusController;
 module.exports.getAllCompaniesController = getAllCompaniesController;
 module.exports.getAllCompaniesTrueController = getAllCompaniesTrueController;

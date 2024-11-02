@@ -3,7 +3,7 @@ const multer = require("multer");
 const upload = multer();
 const router = express.Router();
 const {verifyToken, companyMiddleware, adminMiddleware, candidateMiddleware, } = require("../middlewares/authMiddlewares");
-const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController, getJobsFalseByCompanyIdController, getJobsNotStatusByCompanyIdController, getAllJobsReJectedController, getAllJobsPendingController, searchJobsController, checkCandidateWithAllJobsSkillsController, getSimilarJobController, searchJobsByAdminController,  } = require("../controllers/jobControllers");
+const { createJobController, getAllJobsController, getJobsByCompanyIdController, getJobByIdController, updateJobController, deleteJobController, updateJobStatusController, getAllJobsStatusTrueController, getJobsTrueByCompanyIdController, getJobsFalseByCompanyIdController, getJobsNotStatusByCompanyIdController, getAllJobsReJectedController, getAllJobsPendingController, searchJobsController, checkCandidateWithAllJobsSkillsController, getSimilarJobController, searchJobsByAdminController, getAllJobsNotPageController,  } = require("../controllers/jobControllers");
 
 router.post("/recommended-for-candidate", candidateMiddleware, checkCandidateWithAllJobsSkillsController)
 
@@ -22,6 +22,8 @@ router.post("/create", companyMiddleware, createJobController )
 router.get("/get-all-job", getAllJobsStatusTrueController);
 
 router.get('/get-all', getAllJobsController)
+
+router.get("/get-all-not-page", getAllJobsNotPageController)
 
 router.post("/get-job/:companyId", getJobsByCompanyIdController)
 

@@ -1153,6 +1153,7 @@ const checkCandidateWithAllJobsSkillsController = async (req, res) => {
           numberOfCruiment: job.numberOfCruiment,
           expiredAt: job.expiredAt,
           category: job.category,
+          pendingUpdates: job.pendingUpdates
         });
       }
     }
@@ -1223,6 +1224,7 @@ const getSimilarJobController = async (req, res) => {
           numberOfCruiment: job.numberOfCruiment,
           expiredAt: job.expiredAt,
           category: job.category,
+          pendingUpdates: job.pendingUpdates,
         });
       }
     }
